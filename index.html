@@ -263,7 +263,6 @@
 </head>
 <body>
   <div class="page">
-    <!-- TOP NAV -->
     <div class="top-nav">
       <div class="brand-area">
         <div class="brand-chip">
@@ -288,7 +287,6 @@
       </div>
     </div>
 
-    <!-- TITLE -->
     <h1>CER Impact Dashboard</h1>
     <div class="subtitle">
       Live view of 2025 activities, audience reach, national coverage, SIM distribution, budget, and social media impact.
@@ -296,9 +294,7 @@
 
     <div id="globalError" class="error-text"></div>
 
-    <!-- KPI CARDS: top row -->
     <div class="grid grid-4" style="margin-bottom: 20px;">
-      <!-- TOTAL ACTIVITIES -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Total Activities (2025)</div>
@@ -314,7 +310,6 @@
         </div>
       </div>
 
-      <!-- TOTAL AUDIENCE -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Total Audience / Participants</div>
@@ -330,7 +325,6 @@
         </div>
       </div>
 
-      <!-- CITIES COVERED -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Cities Covered</div>
@@ -346,7 +340,6 @@
         </div>
       </div>
 
-      <!-- SIM SHARE -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">SIM Card Distribution (Zain vs Others)</div>
@@ -365,23 +358,36 @@
       </div>
     </div>
 
-    <!-- BUDGET -->
     <div class="grid grid-4" style="margin-bottom: 20px;">
+      
       <div class="card" style="grid-column: span 2;">
         <div class="card-header-row">
-          <div class="card-label">Total Budget (IQD)</div>
+          <div class="card-label">Total Budget (2025)</div>
         </div>
         <div id="kpiBudget" class="kpi-value">Loading...</div>
         <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
         <div class="kpi-note">
-          Cumulative approved and executed budget for CER activities recorded in Logistics 2025.
+          Total budget spend in 2025.
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-label">Jobs Created (2025)</div>
+          <div class="badge-soft">
+             <span class="badge-soft-dot"></span>
+             <span>Economic Impact</span>
+          </div>
+        </div>
+        <div class="kpi-value">220</div>
+        <div class="kpi-note">
+          Direct and indirect employment opportunities generated through 2025 programs.
+        </div>
+      </div>
+
     </div>
 
-    <!-- SOCIAL MEDIA KPIs -->
     <div class="grid grid-4" style="margin-bottom: 20px;">
-      <!-- SOCIAL REACH -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Social Reach (2025)</div>
@@ -393,7 +399,6 @@
         </div>
       </div>
 
-      <!-- SOCIAL ENGAGEMENT -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Social Engagement (2025)</div>
@@ -405,7 +410,6 @@
         </div>
       </div>
 
-      <!-- SOCIAL INTERACTION -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Social Interaction (2025)</div>
@@ -417,7 +421,6 @@
         </div>
       </div>
 
-      <!-- SOCIAL IMPRESSION -->
       <div class="card">
         <div class="card-header-row">
           <div class="card-label">Social Impression (2025)</div>
@@ -430,7 +433,6 @@
       </div>
     </div>
 
-    <!-- CHARTS: Activities + SIM -->
     <div class="grid grid-2">
       <div class="card">
         <div class="chart-header">
@@ -462,7 +464,6 @@
       </div>
     </div>
 
-    <!-- GENDER CHART -->
     <div class="grid" style="margin-top: 18px;">
       <div class="card">
         <div class="chart-header">
@@ -481,11 +482,9 @@
 
   </div>
 
-  <script>
-
+<script>
   // ⚠️ PASTE YOUR GOOGLE APPS SCRIPT URL HERE
-  // It must end with /exec
-  const API_URL = "https://script.google.com/macros/s/AKfycbzp0q6-Q5_ufHJqWI-SuNGddEBI-OtOtkKdhGflNMnP9rV9pAK1BWDK30qIQ5jQvtwIgA/exec"; 
+  const API_URL = "https://script.google.com/macros/s/AKfycbzp0q6-Q5_ufHJqWI-SuNGddEBI-OtOtkKdhGflNMnP9rV9pAK1BWDK30qIQ5jQvtwIgA/exec";
 
   // Static comparison text
   const STATIC_COMPARE_2024 = {
@@ -574,7 +573,7 @@
   }
 
   // ---------- 1. RELAXED ACTIVITY COUNTER ----------
-function isCountedActivityFixed(row) {
+  function isCountedActivityFixed(row) {
     if (!row || row.length < 2) return false;
     
     // Col B (Index 1) = Activity Name
@@ -582,7 +581,7 @@ function isCountedActivityFixed(row) {
     const activityName = String(row[1] || "").trim();
     const status = String(row[14] || "").trim().toLowerCase();
 
-    // 1. MUST have a name (longer than 1 char to avoid accidental spaces)
+    // 1. MUST have a name (longer than 1 char)
     if (activityName.length < 2) return false;
 
     // 2. Filter out Headers and Summaries
@@ -598,6 +597,7 @@ function isCountedActivityFixed(row) {
     
     return true; 
   }
+
   function computeYearMetrics2025(sheetData) {
     if (!sheetData || sheetData.length < 2) return { activities: 0, audience: 0, budget: 0, cities: 0 };
     
@@ -628,55 +628,52 @@ function isCountedActivityFixed(row) {
 
   // ---------- 2. SOCIAL MEDIA FIX (YEAR FILTER) ----------
   function computeSocialTotals(sheetData) {
-  const t25 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
-  const t24 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+    const t25 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+    const t24 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
 
-  if (!sheetData || sheetData.length < 2) return { t25, t24 };
+    if (!sheetData || sheetData.length < 2) return { t25, t24 };
 
-  // 1. Find Headers
-  let headerRowIndex = -1;
-  let headers = [];
-  for (let r = 0; r < Math.min(sheetData.length, 5); r++) {
-    const rowStr = sheetData[r].join(" ").toLowerCase();
-    if (rowStr.includes("reach") || rowStr.includes("date") || rowStr.includes("الوصول")) {
-      headerRowIndex = r;
-      headers = sheetData[r].map(h => String(h).toLowerCase().trim());
-      break;
+    // Find Headers
+    let headerRowIndex = -1;
+    let headers = [];
+    for (let r = 0; r < Math.min(sheetData.length, 5); r++) {
+      const rowStr = sheetData[r].join(" ").toLowerCase();
+      if (rowStr.includes("reach") || rowStr.includes("date") || rowStr.includes("الوصول")) {
+        headerRowIndex = r;
+        headers = sheetData[r].map(h => String(h).toLowerCase().trim());
+        break;
+      }
     }
+    if (headerRowIndex === -1) return { t25, t24 };
+
+    // Find Columns
+    const getIndex = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+    const idxDate = getIndex(["date", "year", "time", "التاريخ"]);
+    const idxReach = getIndex(["reach", "الوصول"]);
+    const idxEngagement = getIndex(["engag", "التفاعل"]);
+    const idxInteraction = getIndex(["interaction"]);
+    const idxImpression = getIndex(["impress", "views", "الظهور"]);
+
+    for (let i = headerRowIndex + 1; i < sheetData.length; i++) {
+      const row = sheetData[i];
+      if (!row) continue;
+
+      const dateStr = String(row[idxDate] || "");
+      const is2025 = dateStr.indexOf("2025") > -1;
+      const is2024 = dateStr.indexOf("2024") > -1;
+
+      const addTo = (obj) => {
+        if (idxReach > -1) obj.reach += toNumberSmart(row[idxReach]);
+        if (idxEngagement > -1) obj.engagement += toNumberSmart(row[idxEngagement]);
+        if (idxInteraction > -1) obj.interaction += toNumberSmart(row[idxInteraction]);
+        if (idxImpression > -1) obj.impression += toNumberSmart(row[idxImpression]);
+      };
+
+      if (is2025) addTo(t25);
+      else if (is2024) addTo(t24);
+    }
+    return { t25, t24 };
   }
-  if (headerRowIndex === -1) return { t25, t24 };
-
-  // 2. Find Column Indices
-  const getIndex = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
-  const idxDate = getIndex(["date", "year", "time", "التاريخ"]);
-  const idxReach = getIndex(["reach", "الوصول"]);
-  const idxEngagement = getIndex(["engag", "التفاعل"]);
-  const idxInteraction = getIndex(["interaction"]);
-  const idxImpression = getIndex(["impress", "views", "الظهور"]);
-
-  // 3. Loop and Sort into 2025 or 2024
-  for (let i = headerRowIndex + 1; i < sheetData.length; i++) {
-    const row = sheetData[i];
-    if (!row) continue;
-
-    const dateStr = String(row[idxDate] || "");
-    const is2025 = dateStr.indexOf("2025") > -1;
-    const is2024 = dateStr.indexOf("2024") > -1;
-
-    // Helper to add to the correct year object
-    const addTo = (obj) => {
-      if (idxReach > -1) obj.reach += toNumberSmart(row[idxReach]);
-      if (idxEngagement > -1) obj.engagement += toNumberSmart(row[idxEngagement]);
-      if (idxInteraction > -1) obj.interaction += toNumberSmart(row[idxInteraction]);
-      if (idxImpression > -1) obj.impression += toNumberSmart(row[idxImpression]);
-    };
-
-    if (is2025) addTo(t25);
-    else if (is2024) addTo(t24);
-  }
-
-  return { t25, t24 };
-}
 
   // ---------- SIM & GENDER LOGIC ----------
   function extractPhonesFromSheet(sheetData, allowedCols) {
@@ -684,7 +681,6 @@ function isCountedActivityFixed(row) {
     for (let i = 1; i < sheetData.length; i++) {
       const row = sheetData[i];
       if (!row) continue;
-      // Loop over columns
       const colsToCheck = (allowedCols && allowedCols.length) ? allowedCols : row.map((_, idx) => idx);
       for (const c of colsToCheck) {
         const cell = row[c];
@@ -716,7 +712,7 @@ function isCountedActivityFixed(row) {
       const normalized = normalizeIraqiMobile(raw);
       if (!normalized) continue;
       const prefix2 = normalized.slice(0, 2);
-      if (["75", "77", "78", "79"].includes(prefix2)) { // added 79 support
+      if (["75", "77", "78", "79"].includes(prefix2)) { 
         total++;
         if (prefix2 === "78" || prefix2 === "79") zain++; 
         else if (prefix2 === "77") asiacell++;
@@ -750,7 +746,6 @@ function isCountedActivityFixed(row) {
   function updateDashboard() {
     if (!globalData) return;
 
-    // ✅ FIXED: Using 'logistics2025' key
     const logistics2025 = globalData.logistics2025; 
     const station       = globalData.station || [];
     const makers        = globalData.makers || [];
@@ -789,42 +784,21 @@ function isCountedActivityFixed(row) {
     const zainPct = ((simStats.zain / totalSim) * 100).toFixed(1);
     elSimShare.textContent = zainPct + "%";
 
-// Charts: Activities (STRICT 2025 FILTER)
+    // Charts: Activities (STRICT 2025)
     const monthCounts = Array(12).fill(0);
-    const startDateCol = 4; // Col E
-
+    const startDateCol = 4; 
     for (let i = 1; i < logistics2025.length; i++) {
        const row = logistics2025[i];
        if (!isCountedActivityFixed(row)) continue;
-       
        const cellValue = row[startDateCol];
-       
-       // 1. STRICT CHECK: If it's a real Date object, check the year
        if (Object.prototype.toString.call(cellValue) === '[object Date]') {
-         if (cellValue.getFullYear() !== 2025) continue; // Skip 2024 or 2026
-       } 
-       // 2. TEXT CHECK: If it's text, ensure it doesn't say "2024"
-       else {
-         const dateStr = String(cellValue || "");
-         if (dateStr.includes("2024")) continue; // Explicitly kick out 2024
+         if (cellValue.getFullYear() !== 2025) continue;
+       } else {
+         if (String(cellValue || "").includes("2024")) continue;
        }
-
-       // Now safe to parse the month
        let mi = parseMonthFromCell(cellValue, 2025);
-       if (mi !== null && mi >= 0 && mi < 12) {
-         monthCounts[mi]++;
-       }
+       if (mi !== null && mi >= 0 && mi < 12) monthCounts[mi]++;
     }
-
-    if (activitiesChart) activitiesChart.destroy();
-    activitiesChart = new Chart(document.getElementById("activitiesChart").getContext("2d"), {
-      type: "bar",
-      data: {
-        labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-        datasets: [{ label: "Activities (2025)", data: monthCounts, backgroundColor: "#d946ef", borderRadius: 6 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } }, scales: { y: { beginAtZero: true, ticks: { color: "#e5e7eb" }, grid: { color: "#27272f" } }, x: { ticks: { color: "#e5e7eb" }, grid: { display: false } } } }
-    });
 
     if (activitiesChart) activitiesChart.destroy();
     activitiesChart = new Chart(document.getElementById("activitiesChart").getContext("2d"), {
@@ -842,7 +816,12 @@ function isCountedActivityFixed(row) {
       type: "doughnut",
       data: {
         labels: ["Zain", "Asiacell", "Korek"],
-        datasets: [{ data: [simStats.zain, simStats.asiacell, simStats.korek], backgroundColor: ["#d946ef", "#3b82f6", "#eab308"], borderWidth: 0 }]
+        datasets: [{ 
+          data: [simStats.zain, simStats.asiacell, simStats.korek], 
+          // Colors: Zain (Purple), Asiacell (Red), Korek (Blue)
+          backgroundColor: ["#d946ef", "#ef4444", "#3b82f6"], 
+          borderWidth: 0 
+        }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } } }
     });
@@ -860,35 +839,28 @@ function isCountedActivityFixed(row) {
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } } }
     });
-// ... inside updateDashboard() ...
 
     // Social Metrics
     const { t25, t24 } = computeSocialTotals(social);
-
-    // Helper to calculate delta string (e.g. "▲ 10% vs 2024")
     const getDelta = (curr, prev) => {
-      if (!prev) return "—"; // Avoid division by zero
+      if (!prev) return "—";
       const diff = ((curr - prev) / prev) * 100;
       const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "";
       return `${arrow} ${Math.abs(diff).toFixed(1)}% vs 2024`;
     };
 
-    // 1. REACH
     elSocialReach.textContent = t25.reach.toLocaleString();
     elSocialReachDelta.textContent = getDelta(t25.reach, t24.reach);
     elSocialReachDelta.className = "kpi-delta " + (t25.reach >= t24.reach ? "delta-up" : "delta-down");
 
-    // 2. ENGAGEMENT
     elSocialEngagement.textContent = t25.engagement.toLocaleString();
     elSocialEngagementDelta.textContent = getDelta(t25.engagement, t24.engagement);
     elSocialEngagementDelta.className = "kpi-delta " + (t25.engagement >= t24.engagement ? "delta-up" : "delta-down");
 
-    // 3. INTERACTION
     elSocialInteraction.textContent = t25.interaction.toLocaleString();
     elSocialInteractionDelta.textContent = getDelta(t25.interaction, t24.interaction);
     elSocialInteractionDelta.className = "kpi-delta " + (t25.interaction >= t24.interaction ? "delta-up" : "delta-down");
 
-    // 4. IMPRESSION
     elSocialImpression.textContent = t25.impression.toLocaleString();
     elSocialImpressionDelta.textContent = getDelta(t25.impression, t24.impression);
     elSocialImpressionDelta.className = "kpi-delta " + (t25.impression >= t24.impression ? "delta-up" : "delta-down");
@@ -904,7 +876,6 @@ function isCountedActivityFixed(row) {
       try { json = JSON.parse(rawText); } 
       catch (e) { throw new Error("Invalid JSON from Server"); }
 
-      // ✅ FIXED: Checking for logistics2025
       if (!json.logistics2025 || !json.registration) {
          showError("JSON missing keys. Got: " + Object.keys(json).join(", "));
          return;
@@ -920,6 +891,6 @@ function isCountedActivityFixed(row) {
   }
 
   loadData();
-  </script>
+</script>
 </body>
 </html>
