@@ -2,896 +2,467 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Live)</title>
+  <title>CER Impact Dashboard (Social Comparison)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  
   <style>
-    :root {
-      --bg-main: #040011;
-      --bg-card: #0c071d;
-      --bg-card-soft: #120a2a;
-      --border-subtle: #231a3c;
-      --accent: #d946ef;
-      --accent-soft: #9333ea;
-      --text-main: #f9fafb;
-      --text-muted: #9ca3af;
-      --text-soft: #6b7280;
-      --success: #4ade80;
-      --danger: #f97373;
-      --chip-bg: rgba(255,255,255,0.06);
-    }
-
+    /* --- MAIN STYLES --- */
+    :root { --bg-main: #040011; --bg-card: #0c071d; --bg-card-soft: #120a2a; --border-subtle: #231a3c; --accent: #d946ef; --accent-soft: #9333ea; --text-main: #f9fafb; --text-muted: #9ca3af; --text-soft: #6b7280; --success: #4ade80; --warning: #facc15; --danger: #f97373; --chip-bg: rgba(255,255,255,0.06); }
     * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 24px 16px 40px; }
+    
+    .top-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .brand-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .brand-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--chip-bg); border: 1px solid rgba(255,255,255,0.08); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-soft); }
+    .brand-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 0 3px rgba(217,70,239,0.4); }
+    
+    .top-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+    .pill { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(148,163,184,0.4); font-size: 12px; color: #e5e7eb; display: inline-flex; align-items: center; gap: 6px; background: rgba(15,23,42,0.8); }
+    
+    select { background-color: transparent; border: none; color: #f9fafb; font-size: 12px; outline: none; padding: 2px 4px; cursor: pointer; font-weight: 500; }
+    select option { background-color: #0c071d; color: #fff; padding: 10px; }
+    
+    .btn-admin { background: var(--accent); color: white; border: none; padding: 6px 16px; border-radius: 999px; font-size: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+    .btn-admin:hover { background: var(--accent-soft); }
+    .btn-admin.active { background: #fff; color: #000; }
 
-    body {
-      margin: 0;
-      padding: 0;
-      background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%);
-      color: var(--text-main);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif;
-    }
-    .page {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 24px 16px 40px;
-    }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
 
-    /* TOP NAV */
-    .top-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
-    }
-    .brand-area {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .brand-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: var(--chip-bg);
-      border: 1px solid rgba(255,255,255,0.08);
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--text-soft);
-    }
-    .brand-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 3px rgba(217,70,239,0.4);
-    }
-    .nav-tabs {
-      display: inline-flex;
-      background: rgba(15,23,42,0.7);
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.25);
-      overflow: hidden;
-    }
-    .nav-tab {
-      padding: 6px 16px;
-      font-size: 12px;
-      cursor: default;
-      color: var(--text-soft);
-      border-right: 1px solid rgba(148,163,184,0.25);
-    }
-    .nav-tab:last-child { border-right: none; }
-    .nav-tab.active {
-      background: var(--accent-soft);
-      color: #fff;
-    }
-
-    .top-controls {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .pill {
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.4);
-      font-size: 12px;
-      color: #e5e7eb;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(15,23,42,0.8);
-    }
-    select {
-      background: transparent;
-      border: none;
-      color: #f9fafb;
-      font-size: 12px;
-      outline: none;
-      padding: 1px 0;
-    }
-    .update-text {
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-    .update-bold {
-      color: var(--text-muted);
-      font-weight: 500;
-    }
-
-    /* TITLE */
-    h1 {
-      font-size: 26px;
-      margin: 0 0 4px;
-    }
-    .subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-    }
-
-    /* GRID + CARDS */
-    .grid {
-      display: grid;
-      gap: 16px;
-    }
+    .grid { display: grid; gap: 16px; }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    @media (max-width: 1100px) {
-      .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 700px) {
-      .grid-4, .grid-2 { grid-template-columns: minmax(0, 1fr); }
-    }
+    @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) { .grid-4, .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
-    .card {
-      background: linear-gradient(145deg, var(--bg-card) 0, var(--bg-card-soft) 100%);
-      border-radius: 20px;
-      padding: 16px 18px;
-      border: 1px solid var(--border-subtle);
-      box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-    }
-    .card-header-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    .card-label {
-      font-size: 11px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--text-soft);
-      font-weight: 500;
-    }
-    .badge-soft {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(14,148,136,0.1);
-      color: #6ee7b7;
-      font-size: 10px;
-      border: 1px solid rgba(16,185,129,0.4);
-      white-space: nowrap;
-    }
-    .badge-soft-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: #22c55e;
-    }
-    .badge-soft.red {
-      background: rgba(248,113,113,0.08);
-      color: #fecaca;
-      border-color: rgba(248,113,113,0.4);
-    }
+    .card { background: linear-gradient(145deg, var(--bg-card) 0, var(--bg-card-soft) 100%); border-radius: 20px; padding: 16px 18px; border: 1px solid var(--border-subtle); box-shadow: 0 18px 40px rgba(0,0,0,0.45); transition: 0.3s; }
+    .card-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .card-label { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-soft); font-weight: 500; }
+    .badge-soft { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; background: rgba(14,148,136,0.1); color: #6ee7b7; font-size: 10px; border: 1px solid rgba(16,185,129,0.4); white-space: nowrap; }
+    .badge-soft-dot { width: 6px; height: 6px; border-radius: 999px; background: #22c55e; }
+    .badge-soft.red { background: rgba(248,113,113,0.08); color: #fecaca; border-color: rgba(248,113,113,0.4); }
     .badge-soft.red .badge-soft-dot { background: #f87171; }
-
-    .kpi-value {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .kpi-delta {
-      font-size: 11px;
-      margin-bottom: 6px;
-    }
+    
+    .kpi-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+    .kpi-delta { font-size: 11px; margin-bottom: 6px; }
     .delta-up { color: var(--success); }
     .delta-down { color: var(--danger); }
     .delta-neutral { color: var(--text-muted); }
+    .kpi-note { font-size: 11px; color: var(--text-soft); line-height: 1.4; }
+    .sim-big-line { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    .chart-wrapper { position: relative; width: 100%; height: 270px; }
+    .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 8px; }
+    .chart-title { font-size: 13px; font-weight: 500; }
+    .error-text { font-size: 12px; color: var(--danger); margin-bottom: 12px; white-space: pre-wrap; }
 
-    .kpi-note {
-      font-size: 11px;
-      color: var(--text-soft);
-      line-height: 1.4;
-    }
-
-    .sim-big-line {
-      font-size: 24px;
-      font-weight: 700;
-      margin-top: 4px;
-    }
-
-    /* CHART AREA */
-    .chart-wrapper {
-      position: relative;
-      width: 100%;
-      height: 270px;
-    }
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 10px;
-      gap: 8px;
-    }
-    .chart-title {
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .chart-subtitle {
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-    .chart-pill {
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,0.4);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--text-soft);
-    }
-
-    /* ERROR */
-    .error-text {
-      font-size: 12px;
-      color: var(--danger);
-      margin-bottom: 12px;
-      white-space: pre-wrap;
-    }
+    /* --- ADMIN VIEW --- */
+    #adminPanel { display: none; }
+    .admin-controls { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
+    .full-width { grid-column: span 4; }
+    @media (max-width: 800px) { .admin-controls { grid-template-columns: 1fr; } .full-width { grid-column: auto; } }
+    .form-group { width: 100%; }
+    .form-label { font-size: 11px; color: var(--text-soft); margin-bottom: 4px; display: block; }
+    .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: white; padding: 8px 12px; border-radius: 6px; outline: none; }
+    .form-input:focus { border-color: var(--accent); }
+    textarea.form-input { min-height: 60px; resize: vertical; font-family: inherit; }
+    .btn-save { background: var(--success); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; }
+    .btn-update { background: var(--warning); color: #000; } 
+    .btn-cancel-edit { background: transparent; color: var(--text-muted); border: 1px solid var(--border-subtle); width: 100%; padding: 10px; border-radius: 6px; margin-top: 6px; cursor: pointer; display: none; }
+    .btn-ai { background: linear-gradient(135deg, #6366f1, #d946ef); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; float: right; margin-bottom: 4px; font-weight: 600; display: flex; align-items: center; gap:4px; }
+    .btn-ai:hover { opacity: 0.9; }
+    .report-box { background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.3); padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+    .btn-download { background: #0ea5e9; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; height: 35px; display: flex; align-items: center; gap: 6px; }
+    .btn-download:hover { background: #0284c7; }
+    .data-table-wrapper { overflow-x: auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-subtle); max-height: 600px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+    th { background: rgba(255,255,255,0.03); color: var(--text-muted); padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); font-weight: 500; white-space: nowrap; position: sticky; top: 0; backdrop-filter: blur(10px); }
+    td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-main); white-space: nowrap; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .desc-cell { white-space: normal; min-width: 250px; max-width: 400px; color: var(--text-soft); font-size: 12px; line-height: 1.4; }
+    .btn-icon { background: transparent; border: none; color: var(--text-soft); cursor: pointer; padding: 4px; border-radius: 4px; }
+    .btn-icon:hover { background: rgba(255,255,255,0.1); color: white; }
+    .btn-icon.del:hover { color: var(--danger); background: rgba(249,115,115,0.1); }
+    .btn-icon.edit:hover { color: var(--warning); background: rgba(250,204,21,0.1); }
+    .material-icons { font-size: 18px; vertical-align: middle; }
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .modal-box { background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 24px; border-radius: 16px; width: 90%; max-width: 320px; }
+    .login-title { text-align: center; margin-bottom: 20px; }
+    .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+    .btn-cancel { background: transparent; color: var(--text-soft); border: none; cursor: pointer; }
   </style>
 </head>
 <body>
   <div class="page">
     <div class="top-nav">
       <div class="brand-area">
-        <div class="brand-chip">
-          <span class="brand-dot"></span>
-          <span>CER · Zain Iraq</span>
-        </div>
-        <div class="nav-tabs">
-          <div class="nav-tab active">Management View</div>
-          <div class="nav-tab">Activities &amp; Reach</div>
-        </div>
+        <div class="brand-chip"><span class="brand-dot"></span><span>CER · Zain Iraq</span></div>
+        <button id="btnToggle" class="btn-admin" onclick="toggleAdminMode()">
+          <span class="material-icons">settings</span> Manage Data
+        </button>
       </div>
       <div class="top-controls">
         <div class="pill">
-          Year:
-          <select id="yearSelect">
+          Logistics Year:
+          <select id="viewYear" onchange="handleYearChange()">
             <option value="2025" selected>2025</option>
+            <option value="2026">2026</option>
+            <option value="2024">2024</option>
           </select>
         </div>
-        <div class="update-text">
-          Last update: <span class="update-bold">from CER Master Sheet</span>
-        </div>
+        <div class="update-text">Status: <span class="update-bold">Live</span></div>
       </div>
     </div>
 
     <h1>CER Impact Dashboard</h1>
-    <div class="subtitle">
-      Live view of 2025 activities, audience reach, national coverage, SIM distribution, budget, and social media impact.
-    </div>
-
+    <div class="subtitle">Live view of <span id="titleYear">2025</span> activities.</div>
     <div id="globalError" class="error-text"></div>
 
-    <div class="grid grid-4" style="margin-bottom: 20px;">
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Total Activities (2025)</div>
-          <div class="badge-soft">
-            <span class="badge-soft-dot"></span>
-            <span>On-track vs. plan</span>
-          </div>
-        </div>
-        <div id="kpiActivities" class="kpi-value">Loading...</div>
-        <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          All activities across hubs, universities, and partners logged in “Logistics 2025”.
-        </div>
+    <div id="dashboardView">
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:16px;">
+         <div class="pill">Participants: <select id="simYearFilter" onchange="updateSimCharts()"><option value="all">All Years</option></select></div>
+         <div class="pill">Quarter: <select id="quarterFilter" onchange="applyFilters()"><option value="all">All Year</option><option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option></select></div>
       </div>
 
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Total Audience / Participants</div>
-          <div id="audienceDeltaBadge" class="badge-soft">
-            <span class="badge-soft-dot"></span>
-            <span id="audienceDeltaBadgeText">vs 2024</span>
-          </div>
-        </div>
-        <div id="kpiAudience" class="kpi-value">Loading...</div>
-        <div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Sum of “Total Audience” field per activity – workshops, hackathons, trainings, and events.
-        </div>
+      <div class="grid grid-4" style="margin-bottom: 20px;">
+        <div class="card"><div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div><div id="kpiActivities" class="kpi-value">...</div><div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div id="cardSims" class="card"><div class="card-header-row"><div class="card-label">SIM Distribution</div><div class="badge-soft red"><span class="badge-soft-dot"></span><span>Share</span></div></div><div class="sim-big-line"><span id="kpiSimShare">...</span><span style="font-size: 16px; margin-left: 4px;">Zain</span></div></div>
       </div>
 
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Cities Covered</div>
-          <div class="badge-soft">
-            <span class="badge-soft-dot"></span>
-            <span>National footprint</span>
-          </div>
-        </div>
-        <div id="kpiCities" class="kpi-value">Loading...</div>
-        <div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Baghdad, Mosul, Basra, Najaf and other locations reached through CER initiatives.
-        </div>
+      <div class="grid grid-4" style="margin-bottom: 20px;">
+        <div id="cardBudget" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Budget Spent</div></div><div id="kpiBudget" class="kpi-value">...</div><div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div></div>
+        <div id="cardJobs" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Jobs Created</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Impact</span></div></div><div class="kpi-value">220</div><div class="kpi-note">Annual Estimate</div></div>
       </div>
-
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">SIM Card Distribution (Zain vs Others)</div>
-          <div class="badge-soft red">
-            <span class="badge-soft-dot"></span>
-            <span>Based on participant SIMs</span>
-          </div>
-        </div>
-        <div class="sim-big-line">
-          <span id="kpiSimShare">Loading...</span>
-          <span style="font-size: 16px; margin-left: 4px;">Zain</span>
-        </div>
-        <div class="kpi-note" style="margin-top: 6px;">
-          Derived from phone prefixes in Registration, The Station DB, and Makers of Baghdad DB (78 vs 77/75).
-        </div>
-      </div>
-    </div>
-
-    <div class="grid grid-4" style="margin-bottom: 20px;">
       
-      <div class="card" style="grid-column: span 2;">
-        <div class="card-header-row">
-          <div class="card-label">Total Budget (2025)</div>
+      <div id="rowSocial" class="grid grid-4" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-header-row"><div class="card-label">Social Reach</div></div>
+            <div id="kpiSocialReach" class="kpi-value">...</div>
+            <div id="kpiSocialReachDelta" class="kpi-delta delta-neutral"></div>
         </div>
-        <div id="kpiBudget" class="kpi-value">Loading...</div>
-        <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Total budget spent in 2025.
+        <div class="card">
+            <div class="card-header-row"><div class="card-label">Social Engagement</div></div>
+            <div id="kpiSocialEngagement" class="kpi-value">...</div>
+            <div id="kpiSocialEngagementDelta" class="kpi-delta delta-neutral"></div>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Jobs Created (2025)</div>
-          <div class="badge-soft">
-             <span class="badge-soft-dot"></span>
-             <span>Economic Impact</span>
-          </div>
+        <div class="card">
+            <div class="card-header-row"><div class="card-label">Social Interaction</div></div>
+            <div id="kpiSocialInteraction" class="kpi-value">...</div>
+            <div id="kpiSocialInteractionDelta" class="kpi-delta delta-neutral"></div>
         </div>
-        <div class="kpi-value">220</div>
-        <div class="kpi-note">
-          Direct and indirect employment opportunities generated through 2025 programs.
+        <div class="card">
+            <div class="card-header-row"><div class="card-label">Social Impression</div></div>
+            <div id="kpiSocialImpression" class="kpi-value">...</div>
+            <div id="kpiSocialImpressionDelta" class="kpi-delta delta-neutral"></div>
         </div>
       </div>
 
-    </div>
-
-    <div class="grid grid-4" style="margin-bottom: 20px;">
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Social Reach (2025)</div>
-        </div>
-        <div id="kpiSocialReach" class="kpi-value">Loading...</div>
-        <div id="kpiSocialReachDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Sum of “Reach” in the “Social Media” sheet (all 2025-related posts).
-        </div>
+      <div id="rowCharts" class="grid grid-2">
+        <div class="card"><div class="chart-header"><div><div class="chart-title">Activities per Month</div></div></div><div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div></div>
+        <div class="card"><div class="chart-header"><div><div class="chart-title">SIM Distribution</div></div></div><div class="chart-wrapper"><canvas id="simChart"></canvas></div></div>
       </div>
-
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Social Engagement (2025)</div>
-        </div>
-        <div id="kpiSocialEngagement" class="kpi-value">Loading...</div>
-        <div id="kpiSocialEngagementDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Sum of “Engagment/Engagement” in the “Social Media” sheet.
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Social Interaction (2025)</div>
-        </div>
-        <div id="kpiSocialInteraction" class="kpi-value">Loading...</div>
-        <div id="kpiSocialInteractionDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Sum of “Interaction” in the “Social Media” sheet.
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header-row">
-          <div class="card-label">Social Impression (2025)</div>
-        </div>
-        <div id="kpiSocialImpression" class="kpi-value">Loading...</div>
-        <div id="kpiSocialImpressionDelta" class="kpi-delta delta-neutral"></div>
-        <div class="kpi-note">
-          Sum of “Impression” in the “Social Media” sheet.
-        </div>
+      <div id="rowCharts2" class="grid" style="margin-top: 16px;">
+        <div class="card"><div class="chart-header"><div><div class="chart-title">Gender Distribution</div></div></div><div class="chart-wrapper"><canvas id="genderChart"></canvas></div></div>
       </div>
     </div>
 
-    <div class="grid grid-2">
-      <div class="card">
-        <div class="chart-header">
-          <div>
-            <div class="chart-title">Activities per Month (2025)</div>
-            <div class="chart-subtitle">
-              Based on “Start Date” in Logistics 2025.
-            </div>
-          </div>
-          <div class="chart-pill">Trend · 2025 YTD</div>
+    <div id="adminPanel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; color:#fff;">Manage Data (<span id="adminYearLabel">2025</span>)</h3>
+        <span style="font-size:11px; color:var(--text-soft);">Editing enabled</span>
+      </div>
+
+      <div class="report-box">
+        <div style="flex:1; color:#7dd3fc; font-size:13px; display:flex; align-items:center; gap:6px;">
+            <span class="material-icons">description</span> <strong>Generate Excel Report</strong>
         </div>
-        <div class="chart-wrapper">
-          <canvas id="activitiesChart"></canvas>
+        <div class="form-group" style="width:auto;">
+            <label class="form-label">Start Date</label>
+            <input type="date" id="reportStart" class="form-input">
+        </div>
+        <div class="form-group" style="width:auto;">
+            <label class="form-label">End Date</label>
+            <input type="date" id="reportEnd" class="form-input">
+        </div>
+        <button class="btn-download" onclick="downloadReport()">Download .CSV</button>
+      </div>
+      
+      <div class="admin-controls" id="entryForm">
+        <input type="hidden" id="editId" value="">
+        <div class="form-group"><label class="form-label">Activity Name</label><input type="text" id="inpName" class="form-input" placeholder="Name"></div>
+        <div class="form-group"><label class="form-label">Date</label><input type="date" id="inpDate" class="form-input"></div>
+        <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
+        <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
+        <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Budget</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+        <div class="form-group full-width">
+          <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
+          <label class="form-label">Description (Optional)</label>
+          <textarea id="inpDesc" class="form-input" placeholder="Enter brief details about the activity..."></textarea>
+          <button id="btnSave" class="btn-save" onclick="saveActivity()">Add Row to DB</button>
+          <button id="btnCancelEdit" class="btn-cancel-edit" onclick="cancelEdit()">Cancel Editing</button>
         </div>
       </div>
 
-      <div class="card">
-        <div class="chart-header">
-          <div>
-            <div class="chart-title">SIM Distribution – Zain vs Asiacell + Korek</div>
-            <div class="chart-subtitle">
-              Share of SIMs used by registered participants.
-            </div>
-          </div>
-        </div>
-        <div class="chart-wrapper">
-          <canvas id="simChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid" style="margin-top: 18px;">
-      <div class="card">
-        <div class="chart-header">
-          <div>
-            <div class="chart-title">Gender Distribution – Male vs Female</div>
-            <div class="chart-subtitle">
-              Based on gender fields in Registration, The Station DB, and Makers of Baghdad DB.
-            </div>
-          </div>
-        </div>
-        <div class="chart-wrapper">
-          <canvas id="genderChart"></canvas>
-        </div>
+      <div class="data-table-wrapper">
+        <table id="dataTable">
+          <thead><tr><th>Date</th><th>Activity Name</th><th>City</th><th>Audience</th><th>Description</th><th style="width:70px;">Actions</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
       </div>
     </div>
 
   </div>
 
+  <div id="loginModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 320px;">
+      <h3 class="login-title">Admin Login</h3>
+      <div class="form-group"><input type="password" id="adminPassInput" class="form-input" placeholder="Enter Password"></div>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn-cancel" onclick="closeLogin()">Cancel</button>
+        <button class="btn-save" onclick="checkLogin()">Login</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-  // ⚠️ PASTE YOUR GOOGLE APPS SCRIPT URL HERE
-  const API_URL = "https://script.google.com/macros/s/AKfycbzp0q6-Q5_ufHJqWI-SuNGddEBI-OtOtkKdhGflNMnP9rV9pAK1BWDK30qIQ5jQvtwIgA/exec";
+  // ⚠️ PASTE KEYS
+  const supabaseUrl = 'https://xeohzbdgjgusavfonfkf.supabase.co'; 
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';  
+  const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  // Static comparison text
-  const STATIC_COMPARE_2024 = {
-    activities: "▲ 11.4% vs 2024",
-    audience:   "▼ 48.8% vs 2024",
-    budget:     "▲ 45.5% vs 2024",
-    cities:     "▲ 100% vs 2024"
-  };
+  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description" };
+  const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
 
-  const yearSelect        = document.getElementById("yearSelect");
-  const elActivities      = document.getElementById("kpiActivities");
-  const elAudience        = document.getElementById("kpiAudience");
-  const elCities          = document.getElementById("kpiCities");
-  const elSimShare        = document.getElementById("kpiSimShare");
-  const elBudget          = document.getElementById("kpiBudget");
-  
-  const elActivitiesDelta = document.getElementById("kpiActivitiesDelta");
-  const elAudienceDelta   = document.getElementById("kpiAudienceDelta");
-  const elCitiesDelta     = document.getElementById("kpiCitiesDelta");
-  const elBudgetDelta     = document.getElementById("kpiBudgetDelta");
-  const elAudienceDeltaBadge = document.getElementById("audienceDeltaBadge");
-  const elAudienceDeltaBadgeText = document.getElementById("audienceDeltaBadgeText");
-  const elGlobalErr       = document.getElementById("globalError");
+  let isAdmin = false; 
+  let currentLogistics = []; 
+  let comparisonLogistics = [];
+  let rawSocial = [];
+  let rawRegistration = [];
+  let simChartInstance = null;
+  let genderChartInstance = null;
+  let activitiesChartInstance = null;
 
-  // Social KPI elements
-  const elSocialReach        = document.getElementById("kpiSocialReach");
-  const elSocialReachDelta   = document.getElementById("kpiSocialReachDelta");
-  const elSocialEngagement   = document.getElementById("kpiSocialEngagement");
-  const elSocialEngagementDelta = document.getElementById("kpiSocialEngagementDelta");
-  const elSocialInteraction  = document.getElementById("kpiSocialInteraction");
-  const elSocialInteractionDelta = document.getElementById("kpiSocialInteractionDelta");
-  const elSocialImpression   = document.getElementById("kpiSocialImpression");
-  const elSocialImpressionDelta = document.getElementById("kpiSocialImpressionDelta");
-
-  let globalData = null;
-  let activitiesChart = null;
-  let simChart = null;
-  let genderChart = null;
-
-  function showError(msg) {
-    console.error(msg);
-    elGlobalErr.textContent = "Error: " + msg;
+  // --- CALCULATE DELTA HELPER ---
+  function calculateDelta(curr, prev) {
+      if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
+      const d = ((curr - prev) / prev) * 100;
+      const a = d > 0 ? "▲" : d < 0 ? "▼" : "";
+      const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
+      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs Prev Year`, c: `kpi-delta ${cl}` };
   }
 
-  // ---------- UTILITIES ----------
-  function toNumberSmart(v) {
-    if (v === null || v === undefined || v === "") return 0;
-    let s = String(v).trim().replace(/,/g, ""); 
-    const m = s.match(/^(-?\d+(\.\d+)?)([kKmMbB])$/);
-    if (m) {
-      const num = Number(m[1]);
-      const suf = m[3].toLowerCase();
-      const mult = suf === "k" ? 1000 : suf === "m" ? 1000000 : 1;
-      return isNaN(num) ? 0 : num * mult;
-    }
-    const n = Number(s);
-    return isNaN(n) ? 0 : n;
+  // --- REPORT GENERATOR ---
+  function downloadReport() {
+      const startStr = document.getElementById("reportStart").value;
+      const endStr = document.getElementById("reportEnd").value;
+      if (!startStr || !endStr) { alert("Please select both Start and End dates."); return; }
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      end.setHours(23,59,59); 
+      const filtered = currentLogistics.filter(row => {
+          const d = new Date(row[COLS_LOGISTICS.start_date]);
+          return d >= start && d <= end;
+      });
+      if (filtered.length === 0) { alert("No activities found in this date range."); return; }
+      let csv = "Date,Activity Name,City,Audience,Budget,Status,Description\n";
+      filtered.forEach(row => {
+          const cleanDesc = (row[COLS_LOGISTICS.description] || "").replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
+          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
+          csv += line + "\n";
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
   }
 
-  function parseCustomDate(text, fallbackYear) {
-    if (!text) return null;
-    if (text instanceof Date && !isNaN(text.getTime())) return text;
-    text = String(text).trim();
-    const m = text.match(/^([A-Za-z]+)\s+(\d{1,2})$/);
-    if (m) {
-      const monthName = m[1].toLowerCase();
-      const day = Number(m[2]);
-      const monthMap = {
-        january: 0, february: 1, march: 2, april: 3,
-        may: 4, june: 5, july: 6, august: 7,
-        september: 8, october: 9, november: 10, december: 11
-      };
-      if (monthMap.hasOwnProperty(monthName)) {
-        const year = fallbackYear || new Date().getFullYear();
-        return new Date(year, monthMap[monthName], day);
-      }
-    }
-    const d = new Date(text);
-    if (!isNaN(d.getTime())) return d;
-    return null;
-  }
-
-  function parseMonthFromCell(value, fallbackYear) {
-    const d = parseCustomDate(value, fallbackYear);
-    return d ? d.getMonth() : null;
-  }
-
-  // ---------- 1. RELAXED ACTIVITY COUNTER ----------
-  function isCountedActivityFixed(row) {
-    if (!row || row.length < 2) return false;
-    
-    // Col B (Index 1) = Activity Name
-    // Col O (Index 14) = Status
-    const activityName = String(row[1] || "").trim();
-    const status = String(row[14] || "").trim().toLowerCase();
-
-    // 1. MUST have a name (longer than 1 char)
-    if (activityName.length < 2) return false;
-
-    // 2. Filter out Headers and Summaries
-    const lowerName = activityName.toLowerCase();
-    if (lowerName === "activity name" || lowerName.includes("total") || lowerName.includes("grand total")) return false;
-
-    // 3. Filter out Month Header Rows
-    const months = ["january","february","march","april","may","june", "july","august","september","october","november","december"];
-    if (months.includes(lowerName)) return false;
-
-    // 4. Status Check: Exclude Cancelled/Postponed
-    if (status.includes("cancel") || status.includes("postpon")) return false;
-    
-    return true; 
-  }
-
-  function computeYearMetrics2025(sheetData) {
-    if (!sheetData || sheetData.length < 2) return { activities: 0, audience: 0, budget: 0, cities: 0 };
-    
-    // Indices: City=3 (D), Audience=11 (L), Budget=12 (M)
-    const cityCol = 3, audienceCol = 11, budgetCol = 12;
-    let activities = 0, totalAudience = 0, totalBudget = 0;
-    const citySet = new Set();
-
-    for (let i = 1; i < sheetData.length; i++) {
-      const row = sheetData[i];
-      if (!isCountedActivityFixed(row)) continue;
-
-      activities++;
-      const aud = Number(String(row[audienceCol] ?? "").replace(/,/g, "").trim());
-      if (!isNaN(aud)) totalAudience += aud;
-      
-      const bStr = String(row[budgetCol] ?? "").replace(/,/g, "").trim();
-      if (bStr !== "") {
-        const bNum = Number(bStr);
-        if (!isNaN(bNum)) totalBudget += bNum;
-      }
-      
-      const city = String(row[cityCol] ?? "").trim();
-      if (city && city.toLowerCase() !== "city") citySet.add(city.toLowerCase());
-    }
-    return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size };
-  }
-
-  // ---------- 2. SOCIAL MEDIA FIX (YEAR FILTER) ----------
-  function computeSocialTotals(sheetData) {
-    const t25 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
-    const t24 = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
-
-    if (!sheetData || sheetData.length < 2) return { t25, t24 };
-
-    // Find Headers
-    let headerRowIndex = -1;
-    let headers = [];
-    for (let r = 0; r < Math.min(sheetData.length, 5); r++) {
-      const rowStr = sheetData[r].join(" ").toLowerCase();
-      if (rowStr.includes("reach") || rowStr.includes("date") || rowStr.includes("الوصول")) {
-        headerRowIndex = r;
-        headers = sheetData[r].map(h => String(h).toLowerCase().trim());
-        break;
-      }
-    }
-    if (headerRowIndex === -1) return { t25, t24 };
-
-    // Find Columns
-    const getIndex = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
-    const idxDate = getIndex(["date", "year", "time", "التاريخ"]);
-    const idxReach = getIndex(["reach", "الوصول"]);
-    const idxEngagement = getIndex(["engag", "التفاعل"]);
-    const idxInteraction = getIndex(["interaction"]);
-    const idxImpression = getIndex(["impress", "views", "الظهور"]);
-
-    for (let i = headerRowIndex + 1; i < sheetData.length; i++) {
-      const row = sheetData[i];
-      if (!row) continue;
-
-      const dateStr = String(row[idxDate] || "");
-      const is2025 = dateStr.indexOf("2025") > -1;
-      const is2024 = dateStr.indexOf("2024") > -1;
-
-      const addTo = (obj) => {
-        if (idxReach > -1) obj.reach += toNumberSmart(row[idxReach]);
-        if (idxEngagement > -1) obj.engagement += toNumberSmart(row[idxEngagement]);
-        if (idxInteraction > -1) obj.interaction += toNumberSmart(row[idxInteraction]);
-        if (idxImpression > -1) obj.impression += toNumberSmart(row[idxImpression]);
-      };
-
-      if (is2025) addTo(t25);
-      else if (is2024) addTo(t24);
-    }
-    return { t25, t24 };
-  }
-
-  // ---------- SIM & GENDER LOGIC ----------
-  function extractPhonesFromSheet(sheetData, allowedCols) {
-    const phones = [];
-    for (let i = 1; i < sheetData.length; i++) {
-      const row = sheetData[i];
-      if (!row) continue;
-      const colsToCheck = (allowedCols && allowedCols.length) ? allowedCols : row.map((_, idx) => idx);
-      for (const c of colsToCheck) {
-        const cell = row[c];
-        if (!cell) continue;
-        let digits = String(cell).replace(/\D/g, "");
-        if (digits.length >= 8) phones.push(digits);
-      }
-    }
-    return phones;
-  }
-
-  function normalizeIraqiMobile(rawDigits) {
-    let p = rawDigits;
-    if (p.startsWith("00964")) p = p.slice(5);
-    else if (p.startsWith("964")) p = p.slice(3);
-    if (p.length === 11 && p.startsWith("0")) p = p.slice(1);
-    if (p.length > 10) p = p.slice(-10);
-    if (!p.startsWith("7") || p.length !== 10) return null;
-    return p;
-  }
-
-  function computeSimShareFromSheets(allSheetsConfig) {
-    let total = 0, zain = 0, asiacell = 0, korek = 0;
-    const allPhonesDigits = [];
-    for (const cfg of allSheetsConfig) {
-      allPhonesDigits.push(...extractPhonesFromSheet(cfg.data, cfg.cols));
-    }
-    for (const raw of allPhonesDigits) {
-      const normalized = normalizeIraqiMobile(raw);
-      if (!normalized) continue;
-      const prefix2 = normalized.slice(0, 2);
-      if (["75", "77", "78", "79"].includes(prefix2)) { 
-        total++;
-        if (prefix2 === "78" || prefix2 === "79") zain++; 
-        else if (prefix2 === "77") asiacell++;
-        else if (prefix2 === "75") korek++;
-      }
-    }
-    return { total, zain, asiacell, korek };
-  }
-
-  function computeGenderShareFromSheets(allSheetsConfig) {
-    let male = 0, female = 0;
-    const maleValues = new Set(["m", "male", "ذكر", "رجال", "boy"]);
-    const femaleValues = new Set(["f", "female", "انثى", "أنثى", "نساء", "girl"]);
-
-    for (const cfg of allSheetsConfig) {
-      const data = cfg.data || [];
-      for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (!row) continue;
-        for (let c = 0; c < row.length; c++) {
-          const val = String(row[c] || "").toLowerCase().trim();
-          if (maleValues.has(val)) { male++; break; }
-          if (femaleValues.has(val)) { female++; break; }
-        }
-      }
-    }
-    return { total: male+female, male, female };
-  }
-
-  // ---------- MAIN UPDATE LOOP ----------
-  function updateDashboard() {
-    if (!globalData) return;
-
-    const logistics2025 = globalData.logistics2025; 
-    const station       = globalData.station || [];
-    const makers        = globalData.makers || [];
-    const registration  = globalData.registration || [];
-    const social        = globalData.social || [];
-
-    // Metrics
-    const m25 = computeYearMetrics2025(logistics2025);
-    elActivities.textContent = m25.activities.toLocaleString();
-    elAudience.textContent   = m25.audience.toLocaleString();
-    elBudget.textContent     = m25.budget.toLocaleString();
-    elCities.textContent     = m25.cities.toLocaleString();
-
-    // Deltas
-    const items = [
-      { el: elActivitiesDelta, text: STATIC_COMPARE_2024.activities },
-      { el: elAudienceDelta,   text: STATIC_COMPARE_2024.audience },
-      { el: elBudgetDelta,     text: STATIC_COMPARE_2024.budget },
-      { el: elCitiesDelta,     text: STATIC_COMPARE_2024.cities }
+  // --- AI WRITER ---
+  function autoGenerateDesc() {
+    const name = document.getElementById("inpName").value;
+    const city = document.getElementById("inpCity").value;
+    const date = document.getElementById("inpDate").value;
+    const aud = document.getElementById("inpAudience").value;
+    const stat = document.getElementById("inpStatus").value;
+    if (!name || !city || !date) { alert("Please fill in Name, City, and Date first!"); return; }
+    const templates = [
+        `The ${name} was successfully ${stat.toLowerCase()} in ${city} on ${date}. This initiative engaged ${aud || 'various'} participants, focusing on innovation and skill development within the community.`,
+        `On ${date}, the team conducted the ${name} in ${city}. With a turnout of ${aud || 0}, the event aimed to foster growth and support local talent under the CER program.`,
+        `Zain Iraq is proud to have supported the ${name} in ${city}. Held on ${date}, this activity reached ${aud || 0} individuals, reinforcing our commitment to youth empowerment.`
     ];
-    items.forEach(({el, text}) => {
-      el.textContent = text;
-      el.className = "kpi-delta " + (text.includes("▲") ? "delta-up" : text.includes("▼") ? "delta-down" : "delta-neutral");
-    });
-    elAudienceDeltaBadgeText.textContent = STATIC_COMPARE_2024.audience;
-    elAudienceDeltaBadge.className = "badge-soft " + (STATIC_COMPARE_2024.audience.includes("▼") ? "red" : "");
-
-    // SIM Share
-    const simStats = computeSimShareFromSheets([
-       { data: logistics2025, cols: [8] }, 
-       { data: registration, cols: null },
-       { data: station,      cols: null },
-       { data: makers,       cols: null }
-    ]);
-    const totalSim = simStats.total || 1;
-    const zainPct = ((simStats.zain / totalSim) * 100).toFixed(1);
-    elSimShare.textContent = zainPct + "%";
-
-    // Charts: Activities (STRICT 2025)
-    const monthCounts = Array(12).fill(0);
-    const startDateCol = 4; 
-    for (let i = 1; i < logistics2025.length; i++) {
-       const row = logistics2025[i];
-       if (!isCountedActivityFixed(row)) continue;
-       const cellValue = row[startDateCol];
-       if (Object.prototype.toString.call(cellValue) === '[object Date]') {
-         if (cellValue.getFullYear() !== 2025) continue;
-       } else {
-         if (String(cellValue || "").includes("2024")) continue;
-       }
-       let mi = parseMonthFromCell(cellValue, 2025);
-       if (mi !== null && mi >= 0 && mi < 12) monthCounts[mi]++;
-    }
-
-    if (activitiesChart) activitiesChart.destroy();
-    activitiesChart = new Chart(document.getElementById("activitiesChart").getContext("2d"), {
-      type: "bar",
-      data: {
-        labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-        datasets: [{ label: "Activities (2025)", data: monthCounts, backgroundColor: "#d946ef", borderRadius: 6 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } }, scales: { y: { beginAtZero: true, ticks: { color: "#e5e7eb" }, grid: { color: "#27272f" } }, x: { ticks: { color: "#e5e7eb" }, grid: { display: false } } } }
-    });
-
-    // Charts: SIM
-    if (simChart) simChart.destroy();
-    simChart = new Chart(document.getElementById("simChart").getContext("2d"), {
-      type: "doughnut",
-      data: {
-        labels: ["Zain", "Asiacell", "Korek"],
-        datasets: [{ 
-          data: [simStats.zain, simStats.asiacell, simStats.korek], 
-          // Colors: Zain (Purple), Asiacell (Red), Korek (Blue)
-          backgroundColor: ["#d946ef", "#ef4444", "#3b82f6"], 
-          borderWidth: 0 
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } } }
-    });
-
-    // Charts: Gender
-    const genderStats = computeGenderShareFromSheets([
-      { data: registration, cols: null }, { data: station, cols: null }, { data: makers, cols: null }
-    ]);
-    if (genderChart) genderChart.destroy();
-    genderChart = new Chart(document.getElementById("genderChart").getContext("2d"), {
-      type: "doughnut",
-      data: {
-        labels: ["Male", "Female"],
-        datasets: [{ data: [genderStats.male, genderStats.female], backgroundColor: ["#38bdf8", "#f472b6"], borderWidth: 0 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#e5e7eb" } } } }
-    });
-
-    // Social Metrics
-    const { t25, t24 } = computeSocialTotals(social);
-    const getDelta = (curr, prev) => {
-      if (!prev) return "—";
-      const diff = ((curr - prev) / prev) * 100;
-      const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "";
-      return `${arrow} ${Math.abs(diff).toFixed(1)}% vs 2024`;
-    };
-
-    elSocialReach.textContent = t25.reach.toLocaleString();
-    elSocialReachDelta.textContent = getDelta(t25.reach, t24.reach);
-    elSocialReachDelta.className = "kpi-delta " + (t25.reach >= t24.reach ? "delta-up" : "delta-down");
-
-    elSocialEngagement.textContent = t25.engagement.toLocaleString();
-    elSocialEngagementDelta.textContent = getDelta(t25.engagement, t24.engagement);
-    elSocialEngagementDelta.className = "kpi-delta " + (t25.engagement >= t24.engagement ? "delta-up" : "delta-down");
-
-    elSocialInteraction.textContent = t25.interaction.toLocaleString();
-    elSocialInteractionDelta.textContent = getDelta(t25.interaction, t24.interaction);
-    elSocialInteractionDelta.className = "kpi-delta " + (t25.interaction >= t24.interaction ? "delta-up" : "delta-down");
-
-    elSocialImpression.textContent = t25.impression.toLocaleString();
-    elSocialImpressionDelta.textContent = getDelta(t25.impression, t24.impression);
-    elSocialImpressionDelta.className = "kpi-delta " + (t25.impression >= t24.impression ? "delta-up" : "delta-down");
+    document.getElementById("inpDesc").value = templates[Math.floor(Math.random() * templates.length)];
   }
 
+  // --- EDITING LOGIC ---
+  function startEdit(id) {
+    const row = currentLogistics.find(r => r.id === id);
+    if (!row) return;
+    document.getElementById("editId").value = id;
+    document.getElementById("inpName").value = row[COLS_LOGISTICS.name];
+    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date];
+    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city];
+    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed";
+    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience];
+    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget];
+    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
+    document.getElementById("btnCancelEdit").style.display = "block";
+    document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
+  }
+  function cancelEdit() {
+    document.getElementById("editId").value = "";
+    document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = "";
+    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save");
+    document.getElementById("btnCancelEdit").style.display = "none";
+  }
+
+  // --- ADMIN VIEW ---
+  function toggleAdminMode() {
+    if (!isAdmin) { openLogin(); } else {
+      const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
+      if (dash.style.display === "none") { dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); loadData(); } 
+      else { dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); renderTable(); }
+    }
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
+    const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
+    sorted.forEach(row => {
+      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
+      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function saveActivity() {
+    const editId = document.getElementById("editId").value;
+    const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
+    if (!name || !date) { alert("Name and Date are required!"); return; }
+    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc };
+    try {
+      if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; alert("Updated successfully!"); } 
+      else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; alert("Added successfully!"); }
+      cancelEdit(); await loadData(); renderTable();
+    } catch (err) { console.error(err); alert("Error saving: " + err.message); }
+  }
+
+  async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await loadData(); renderTable(); } catch(err) { alert("Error deleting: " + err.message); } }
+
+  // --- LOGIN ---
+  function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
+  function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
+  function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
+  document.getElementById("adminPassInput").addEventListener("keypress", function(event) { if (event.key === "Enter") checkLogin(); });
+  function handleYearChange() { loadData().then(() => { document.getElementById("adminYearLabel").textContent = document.getElementById("viewYear").value; if (document.getElementById("adminPanel").style.display === "block") renderTable(); }); }
+
+  // --- LOAD DATA ---
   async function loadData() {
     try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      
-      const rawText = await res.text();
-      let json;
-      try { json = JSON.parse(rawText); } 
-      catch (e) { throw new Error("Invalid JSON from Server"); }
+      const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+      const prevYear = selectedYear - 1;
+      document.getElementById("titleYear").textContent = selectedYear;
 
-      if (!json.logistics2025 || !json.registration) {
-         showError("JSON missing keys. Got: " + Object.keys(json).join(", "));
-         return;
-      }
+      const { data: curr, error: e1 } = await supabaseClient.from('logistics_all').select('*').eq('Year', selectedYear);
+      if (e1) throw e1; currentLogistics = curr || [];
+      document.getElementById("reportStart").value = `${selectedYear}-01-01`; document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
 
-      globalData = json;
-      updateDashboard();
-      yearSelect.addEventListener("change", updateDashboard);
+      const { data: prev } = await supabaseClient.from('logistics_all').select('*').eq('Year', prevYear);
+      comparisonLogistics = prev || [];
 
-    } catch (err) {
-      showError("Network or script error: " + err.message);
-    }
+      const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
+      rawSocial = soc || [];
+      const d1 = await fetchAllRows('registration', '2025');
+      const d2 = await fetchAllRows('the_station_database', '2023');
+      const d3 = await fetchAllRows('makers_of_baghdad_database', '2025');
+      rawRegistration = [...d1, ...d2, ...d3];
+
+      populateSimYearFilter(); renderKPIsAndCharts(selectedYear);
+    } catch (err) { document.getElementById("globalError").textContent = "Error: " + err.message; console.error(err); }
   }
+
+  // --- RENDER ---
+  function renderKPIsAndCharts(selectedYear) {
+      const prevYear = selectedYear - 1;
+      const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+      const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+      
+      rawSocial.forEach(row => { 
+        const y = String(row[COLS_SOCIAL.year]).trim();
+        if (y == selectedYear) { 
+           tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
+        } else if (y == prevYear) {
+           tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
+        }
+      });
+      
+      // Update Values
+      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); 
+      document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
+      document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
+      document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+
+      // Update Deltas
+      const dReach = calculateDelta(tSoc.reach, tSocPrev.reach);
+      document.getElementById("kpiSocialReachDelta").textContent = dReach.t; document.getElementById("kpiSocialReachDelta").className = dReach.c;
+      
+      const dEng = calculateDelta(tSoc.engagement, tSocPrev.engagement);
+      document.getElementById("kpiSocialEngagementDelta").textContent = dEng.t; document.getElementById("kpiSocialEngagementDelta").className = dEng.c;
+
+      const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction);
+      document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
+
+      const dImp = calculateDelta(tSoc.impression, tSocPrev.impression);
+      document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
+
+      // Charts
+      const mCounts = Array(12).fill(0);
+      currentLogistics.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if(d && d.getFullYear() === selectedYear) mCounts[d.getMonth()]++; });
+      if (activitiesChartInstance) activitiesChartInstance.destroy();
+      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label:`Activities (${selectedYear})`, data:mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
+      applyFilters(); updateSimCharts();
+  }
+  function applyFilters() {
+    const qFilter = document.getElementById("quarterFilter").value; const isAll = (qFilter === "all");
+    const displayMode = isAll ? "grid" : "none"; const blockMode = isAll ? "block" : "none";
+    document.getElementById("rowSocial").style.display = displayMode; document.getElementById("rowCharts").style.display = displayMode; document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; document.getElementById("cardSims").style.display = blockMode; document.getElementById("cardJobs").style.display = blockMode; document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
+    const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
+    document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); document.getElementById("kpiBudget").textContent = mCurr.budget.toLocaleString(); document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
+    const dAct = calculateDelta(mCurr.activities, mPrev.activities); document.getElementById("kpiActivitiesDelta").textContent = dAct.t; document.getElementById("kpiActivitiesDelta").className = dAct.c;
+    const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
+    const dBud = calculateDelta(mCurr.budget, mPrev.budget); document.getElementById("kpiBudgetDelta").textContent = dBud.t; document.getElementById("kpiBudgetDelta").className = dBud.c;
+    const dCit = calculateDelta(mCurr.cities, mPrev.cities); document.getElementById("kpiCitiesDelta").textContent = dCit.t; document.getElementById("kpiCitiesDelta").className = dCit.c;
+  }
+  function computeMetrics(data, quarterFilter) {
+    let activities = 0, totalAudience = 0, totalBudget = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+    data.forEach(row => {
+      const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
+      if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
+      if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
+      activities++; totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
+    }); return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size };
+  }
+  function updateSimCharts() {
+    const yearFilter = document.getElementById("simYearFilter").value; let zain=0, asiacell=0, korek=0, totalSim=0, male=0, female=0;
+    rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const phoneVal = getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"]); let p = String(phoneVal).replace(/\D/g,""); if(p.startsWith("00964")) p=p.slice(5); else if(p.startsWith("964")) p=p.slice(3); if(p.length===11 && p.startsWith("0")) p=p.slice(1); if(p.length===10 && p.startsWith("7")) { totalSim++; if(p.startsWith("78")||p.startsWith("79")) zain++; else if(p.startsWith("77")) asiacell++; else if(p.startsWith("75")) korek++; } const genderVal = getSmartValue(row, ["Gender", "Sex"]); const g = String(genderVal).toLowerCase().trim(); if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) female++; else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) male++; });
+    document.getElementById("kpiSimShare").textContent = totalSim > 0 ? ((zain/totalSim)*100).toFixed(1) + "%" : "0%";
+    if (simChartInstance) simChartInstance.destroy(); simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:["#d946ef","#ef4444","#3b82f6"], borderWidth:0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { labels: { color:"#ccc"} } } } });
+    if (genderChartInstance) genderChartInstance.destroy(); genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:["#38bdf8","#f472b6"], borderWidth:0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { labels: { color:"#ccc"} } } } });
+  }
+  function populateSimYearFilter() { const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); const yearSelect = document.getElementById("simYearFilter"); yearSelect.innerHTML = '<option value="all" selected>All Years</option>'; Array.from(uniqueYears).sort().forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = y; yearSelect.appendChild(opt); }); }
+  async function fetchAllRows(table, defaultYear) { let allData = []; let page = 0; const pageSize = 5000; while (true) { try { const { data, error } = await supabaseClient.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1); if (error) throw error; if (!data || data.length === 0) break; const tagged = data.map(row => { let y = getSmartValue(row, ["Year", "year"]); if (!y) y = defaultYear; return { ...row, _derivedYear: String(y) }; }); allData = allData.concat(tagged); if (data.length < pageSize) break; page++; } catch (err) { console.warn(`Skipping table '${table}':`, err.message); break; } } return allData; }
+  function getSmartValue(row, possibleNames) { if (!row) return ""; const keys = Object.keys(row); for (let name of possibleNames) if (row[name] !== undefined) return row[name]; for (let key of keys) { const lowerKey = key.toLowerCase(); for (let name of possibleNames) if (lowerKey === name.toLowerCase()) return row[key]; } return ""; }
+  function toNumberSmart(v) { if (!v) return 0; let s = String(v).trim().replace(/,/g, ""); const m = s.match(/^(-?\d+(\.\d+)?)([kKmMbB])$/); if (m) { const num = Number(m[1]); const mult = m[3].toLowerCase() === "k" ? 1000 : m[3].toLowerCase() === "m" ? 1000000 : 1; return num * mult; } return Number(s) || 0; }
+  function parseCustomDate(val, targetYear) { if (!val) return null; let text = String(val).trim(); if (/^\d{1,2}-[a-zA-Z]{3}$/.test(text)) text = `${text}-${targetYear}`; let d = new Date(text); if (isNaN(d.getTime()) || d.getFullYear() === 2001) d = new Date(`${text} ${targetYear}`); if (isNaN(d.getTime())) return null; return d; }
+  function getQuarter(dateObj) { if (!dateObj) return null; const m = dateObj.getMonth(); if (m < 3) return "q1"; if (m < 6) return "q2"; if (m < 9) return "q3"; return "q4"; }
 
   loadData();
 </script>
 </body>
 </html>
-
