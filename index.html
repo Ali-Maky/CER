@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Final Release)</title>
+  <title>CER Impact Dashboard (Trends & Comparisons)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -59,7 +59,7 @@
     .chart-title { font-size: 13px; font-weight: 500; }
     .error-text { font-size: 12px; color: var(--danger); margin-bottom: 12px; white-space: pre-wrap; }
 
-    /* DONUT CHART CARDS */
+    /* DONUT CHART CARDS (SIM & GENDER) */
     .donut-card-body { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 270px; overflow: hidden; }
     .donut-kpi-section { flex: 0 0 auto; text-align: center; min-width: 80px; display: flex; flex-direction: column; gap: 20px; justify-content: center; }
     .donut-big-number { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; }
@@ -84,32 +84,26 @@
 
     /* ADMIN & FORMS */
     #adminPanel { display: none; background: var(--bg-card); padding: 24px; border-radius: 20px; border: 1px solid var(--border-subtle); margin-bottom: 30px; }
-    
-    /* TABS */
     .admin-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; }
     .tab-btn { background: transparent; border: none; color: var(--text-soft); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px; transition: 0.2s; }
     .tab-btn.active { background: rgba(217, 70, 239, 0.1); color: var(--accent); }
     .tab-btn:hover { color: #fff; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-
     .admin-controls { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; }
     .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
     .full-width { grid-column: span 4; }
     @media (max-width: 800px) { .form-grid { grid-template-columns: 1fr; } .full-width { grid-column: auto; } }
-    
     .form-group { width: 100%; }
     .form-label { font-size: 11px; color: var(--text-soft); margin-bottom: 4px; display: block; }
     .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: white; padding: 8px 12px; border-radius: 6px; outline: none; }
     .form-input:focus { border-color: var(--accent); }
     textarea.form-input { min-height: 60px; resize: vertical; font-family: inherit; }
-    
     .btn-save { background: var(--success); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 10px; }
     .btn-update { background: var(--warning); color: #000; } 
     .btn-cancel-edit { background: transparent; color: var(--text-muted); border: 1px solid var(--border-subtle); width: 100%; padding: 10px; border-radius: 6px; margin-top: 6px; cursor: pointer; display: none; }
     .btn-ai { background: linear-gradient(135deg, #6366f1, #d946ef); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; float: right; margin-bottom: 4px; font-weight: 600; display: flex; align-items: center; gap:4px; }
     .btn-ai:hover { opacity: 0.9; }
-    
     .report-box { background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.3); padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
     .btn-download { background: #0ea5e9; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; height: 35px; display: flex; align-items: center; gap: 6px; }
     .btn-download:hover { background: #0284c7; }
@@ -292,10 +286,10 @@
             <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div>
             <div id="kpiActivities" class="kpi-value">...</div>
             <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
-            <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Zain Led</div>
+            <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Implemented By Zain</div>
         </div>
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
-        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>City Coverd</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
@@ -314,7 +308,7 @@
                 <div><div class="budget-sub-label">Planned Budget</div><div id="kpiBudgetPlanned" class="budget-sub-value">...</div></div>
             </div>
             <div class="budget-progress-bg"><div id="budgetProgressBar" class="budget-progress-fill"></div></div>
-            <div class="budget-progress-text"><span id="budgetProgressText">0% of Actual</span><span id="budgetPlanComparison">...</span></div>
+            <div class="budget-progress-text"><span id="budgetProgressText">0% Spent from Actual</span><span id="budgetPlanComparison">...</span></div>
         </div>
 
         <div id="cardJobs" class="card" style="grid-column: span 2;">
@@ -332,7 +326,13 @@
       </div>
 
       <div id="rowCharts" class="grid grid-2">
-        <div class="card"><div class="chart-header"><div><div class="chart-title">Activities per Month</div></div></div><div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div></div>
+        <div class="card">
+            <div class="chart-header">
+                <div><div class="chart-title">Activities per Month</div></div>
+                <select id="actChartFilter" onchange="updateActivitiesChart()" class="card-filter"></select>
+            </div>
+            <div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div>
+        </div>
         <div class="card">
             <div class="card-header-row"><div class="chart-title">SIM Distribution</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
             <div class="donut-card-body">
@@ -353,6 +353,15 @@
                 <div class="donut-chart-container"><canvas id="genderChart"></canvas></div><div id="genderLegend" class="donut-legend"></div>
             </div>
         </div>
+      </div>
+      
+      <div class="grid" style="margin-top:16px;">
+          <div class="card">
+              <div class="chart-header">
+                  <div><div class="chart-title">Female Participation Trend</div></div>
+              </div>
+              <div class="chart-wrapper"><canvas id="genderLineChart"></canvas></div>
+          </div>
       </div>
     </div>
 
@@ -382,6 +391,7 @@
   const IQD_RATE = 1320;
 
   let isAdmin = false; 
+  let allLogistics = []; // Stores all years for Activities chart filter
   let currentLogistics = []; 
   let yearlyMetricsArray = []; 
   let comparisonLogistics = [];
@@ -390,6 +400,7 @@
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
+  let genderLineChartInstance = null;
 
   function showToast(msg) {
       const x = document.getElementById("toast");
@@ -416,7 +427,6 @@
       const tbody = document.getElementById("metricsTableBody");
       tbody.innerHTML = "";
       
-      // Sort by Year Descending
       const sorted = [...yearlyMetricsArray].sort((a,b) => b.year - a.year);
       
       sorted.forEach(row => {
@@ -441,6 +451,7 @@
       document.getElementById("inpMetaJobs").value = row.jobs_created;
       document.getElementById("inpMetaActual").value = row.actual_budget;
       document.getElementById("inpMetaPlanned").value = row.planned_budget;
+      // switch tab? already there.
       window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -463,17 +474,17 @@
           document.getElementById("inpMetaJobs").value = "";
           document.getElementById("inpMetaActual").value = "";
           document.getElementById("inpMetaPlanned").value = "";
-          await fetchAllData(); // Refresh all
+          await fetchAllData(); 
       }
   }
 
   // --- ACTIVITY TOGGLE ---
   async function toggleZain(id, isChecked) {
-      const row = currentLogistics.find(r => r.id === id);
+      const row = allLogistics.find(r => r.id === id); // search in all
       if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
       
       const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id);
-      if(error) { alert("Error saving: " + error.message); loadData(); } else { showToast("Status updated!"); }
+      if(error) { alert("Error saving: " + error.message); fetchAllData(); } else { showToast("Status updated!"); }
   }
 
   // --- MAIN LOAD ---
@@ -483,14 +494,16 @@
           const prevYear = selectedYear - 1;
           document.getElementById("titleYear").textContent = selectedYear;
 
-          // 1. Logistics
-          const { data: curr } = await supabaseClient.from('logistics_all').select('*').eq('Year', selectedYear);
-          currentLogistics = curr || [];
+          // 1. Fetch ALL Logistics (for Activities Chart Filter & Admin)
+          const { data: allLogs } = await supabaseClient.from('logistics_all').select('*');
+          allLogistics = allLogs || [];
+          
+          // Filter Current & Prev from the full set
+          currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
+          comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
+
           document.getElementById("reportStart").value = `${selectedYear}-01-01`; 
           document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
-
-          const { data: prev } = await supabaseClient.from('logistics_all').select('*').eq('Year', prevYear);
-          comparisonLogistics = prev || [];
 
           // 2. Metrics
           const { data: metrics } = await supabaseClient.from('yearly_metrics').select('*');
@@ -517,7 +530,7 @@
 
   // --- ACTIVITY CRUD ---
   function startEdit(id) {
-    const row = currentLogistics.find(r => r.id === id); if (!row) return;
+    const row = allLogistics.find(r => r.id === id); if (!row) return;
     document.getElementById("editId").value = id; 
     document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; 
     document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; 
@@ -530,7 +543,6 @@
     
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
     document.getElementById("btnCancelEdit").style.display = "block"; 
-    // If hidden in tab, we need to ensure visible, but user is already in tab
     document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
 
@@ -547,7 +559,11 @@
     const isZain = document.getElementById("inpZainImplemented").checked;
     if (!name || !date) { alert("Name and Date are required!"); return; }
     
-    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc, [COLS_LOGISTICS.is_zain]: isZain };
+    // We infer Year from Date
+    const dObj = new Date(date);
+    const y = dObj.getFullYear();
+
+    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc, [COLS_LOGISTICS.is_zain]: isZain, "Year": y };
     try {
       if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; showToast("Activity Updated!"); } 
       else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; showToast("Activity Added!"); }
@@ -559,6 +575,9 @@
 
   function renderActivityTable() {
     const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
+    // Show Current Year logistics in table by default, or all? 
+    // Usually admin wants to see current. 
+    // Let's show currentLogistics.
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
@@ -617,25 +636,40 @@
   function renderKPIsAndCharts(selectedYear) {
       const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+      const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
+      // SOCIAL DELTAS
       rawSocial.forEach(row => { 
-        if (String(row[COLS_SOCIAL.year]).trim() == selectedYear) { 
+        const y = String(row[COLS_SOCIAL.year]).trim();
+        if (y == selectedYear) { 
            tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
-        } 
+        } else if(y == prevYear) {
+           tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
+        }
       });
       document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
       
-      // Removed delta calculation for social to save space/complexity here, just basics
-      document.getElementById("kpiSocialReachDelta").textContent = ""; 
+      const dReach = calculateDelta(tSoc.reach, tSocPrev.reach); document.getElementById("kpiSocialReachDelta").textContent = dReach.t; document.getElementById("kpiSocialReachDelta").className = dReach.c;
+      const dEng = calculateDelta(tSoc.engagement, tSocPrev.engagement); document.getElementById("kpiSocialEngagementDelta").textContent = dEng.t; document.getElementById("kpiSocialEngagementDelta").className = dEng.c;
+      const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction); document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
+      const dImp = calculateDelta(tSoc.impression, tSocPrev.impression); document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
 
-      const mCounts = Array(12).fill(0);
-      currentLogistics.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if(d && d.getFullYear() === selectedYear) mCounts[d.getMonth()]++; });
-      if (activitiesChartInstance) activitiesChartInstance.destroy();
-      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label:`Activities (${selectedYear})`, data:mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
+      // Update Activity Chart Filter Dropdown
+      const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
+      const actSelect = document.getElementById("actChartFilter");
+      actSelect.innerHTML = '<option value="all">All Years</option>';
+      Array.from(uniqueYears).sort().forEach(y => {
+          const opt = document.createElement("option"); opt.value = y; opt.textContent = y;
+          if(y == selectedYear) opt.selected = true; // default to current view year
+          actSelect.appendChild(opt);
+      });
+
+      updateActivitiesChart(); // Render Act Chart
       
       applyFilters(); 
       updateSimChart(); 
-      updateGenderChart(); 
+      updateGenderChart();
+      renderGenderLineChart();
   }
   
   function applyFilters() {
@@ -690,23 +724,45 @@
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
-      
-      // *** MODIFIED LOGIC: ALWAYS COUNT ACTIVITY, BUT EXCLUDE ONLINE AUDIENCE ***
-      activities++; 
-      totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      activities++; totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
       if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
-      
-      const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); 
-      const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); 
-      
-      if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
-      
-      // ONLY ADD AUDIENCE IF NOT ONLINE
-      if (!isOnline) {
-          totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); 
-      }
+      const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
     }); 
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
+  }
+
+  // --- CHART FUNCTIONS ---
+  
+  function updateActivitiesChart() {
+      const filter = document.getElementById("actChartFilter").value;
+      const mCounts = Array(12).fill(0);
+      
+      let dataset = [];
+      if(filter === "all") {
+          dataset = allLogistics;
+      } else {
+          dataset = allLogistics.filter(row => row.Year == filter);
+      }
+      
+      dataset.forEach(row => { 
+          const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); 
+          if(d) mCounts[d.getMonth()]++; 
+      });
+
+      if (activitiesChartInstance) activitiesChartInstance.destroy();
+      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { 
+          type: "bar", 
+          data: { 
+              labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], 
+              datasets:[{ 
+                  label: filter === "all" ? "All Years" : filter, 
+                  data: mCounts, 
+                  backgroundColor:"#d946ef", 
+                  borderRadius:4 
+              }] 
+          }, 
+          options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } 
+      });
   }
 
   function updateSimChart() {
@@ -744,6 +800,49 @@
     document.getElementById("genderLegend").innerHTML = legendHTMLG;
     if (genderChartInstance) genderChartInstance.destroy(); 
     genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:[colorsG.Male, colorsG.Female], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
+  }
+
+  function renderGenderLineChart() {
+      // Group by Year
+      const yearStats = {};
+      rawRegistration.forEach(row => {
+          const y = row._derivedYear;
+          if(!yearStats[y]) yearStats[y] = { m:0, f:0 };
+          const genderVal = getSmartValue(row, ["Gender", "Sex"]); const g = String(genderVal).toLowerCase().trim(); 
+          if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) yearStats[y].f++; 
+          else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) yearStats[y].m++;
+      });
+
+      const years = Object.keys(yearStats).sort();
+      const percentages = years.map(y => {
+          const t = yearStats[y].m + yearStats[y].f;
+          return t > 0 ? ((yearStats[y].f / t) * 100).toFixed(1) : 0;
+      });
+
+      if (genderLineChartInstance) genderLineChartInstance.destroy();
+      genderLineChartInstance = new Chart(document.getElementById("genderLineChart"), {
+          type: 'line',
+          data: {
+              labels: years,
+              datasets: [{
+                  label: 'Female Participation %',
+                  data: percentages,
+                  borderColor: '#f472b6',
+                  backgroundColor: 'rgba(244, 114, 182, 0.2)',
+                  tension: 0.4,
+                  fill: true
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                  y: { beginAtZero: true, max: 100, grid: { color: '#333' } },
+                  x: { grid: { display: false } }
+              }
+          }
+      });
   }
 
   function populateYearFilters() { 
