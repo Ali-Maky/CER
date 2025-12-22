@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Historical & Admin)</title>
+  <title>CER Impact Dashboard (Full Screen)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,8 +12,15 @@
     /* --- MAIN STYLES --- */
     :root { --bg-main: #040011; --bg-card: #0c071d; --bg-card-soft: #120a2a; --border-subtle: #231a3c; --accent: #d946ef; --accent-soft: #9333ea; --text-main: #f9fafb; --text-muted: #9ca3af; --text-soft: #6b7280; --success: #4ade80; --warning: #facc15; --danger: #f97373; --chip-bg: rgba(255,255,255,0.06); }
     * { box-sizing: border-box; }
-    body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; }
-    .page { max-width: 1280px; margin: 0 auto; padding: 24px 16px 40px; }
+    body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; overflow-x: hidden; }
+    
+    /* LAYOUT FIX: WIDER CONTAINER */
+    .page { 
+      width: 95%; 
+      max-width: 1800px; /* Allowed to go much wider now */
+      margin: 0 auto; /* Keeps it strictly centered */
+      padding: 24px 16px 40px; 
+    }
     
     .top-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
     .brand-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
