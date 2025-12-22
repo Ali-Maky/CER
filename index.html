@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Decoupled Jobs)</title>
+  <title>CER Impact Dashboard (Budget 2.0)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -74,16 +74,25 @@
     .legend-count { display: block; font-size: 10px; color: var(--text-soft); }
     .card-filter { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text-muted); }
 
+    /* NEW BUDGET CARD STYLES */
+    .budget-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;
+    }
+    .budget-sub-label { font-size: 11px; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .budget-sub-value { font-size: 20px; font-weight: 600; color: #fff; }
+    .budget-progress-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; margin-top: 8px; position: relative; overflow: hidden; }
+    .budget-progress-fill { height: 100%; background: var(--success); border-radius: 999px; width: 0%; transition: width 1s ease; }
+    .budget-progress-text { font-size: 10px; color: var(--text-soft); margin-top: 4px; display: flex; justify-content: space-between; }
+
     /* ADMIN */
     #adminPanel { display: none; }
     .admin-controls { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; }
     
-    /* Dedicated KPI Box */
     .kpi-controls-box {
         background: rgba(217, 70, 239, 0.05);
         border: 1px solid rgba(217, 70, 239, 0.2);
         padding: 16px; border-radius: 12px; margin-bottom: 20px;
-        display: flex; gap: 16px; align-items: flex-end;
+        display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;
     }
     
     .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
@@ -165,7 +174,36 @@
       </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
-        <div id="cardBudget" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Budget Spent</div></div><div id="kpiBudget" class="kpi-value">...</div><div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div></div>
+        
+        <div id="cardBudget" class="card" style="grid-column: span 2;">
+            <div class="card-header-row"><div class="card-label">Budget Analysis</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Finance</span></div></div>
+            
+            <div style="margin-bottom:12px;">
+                <div class="budget-sub-label">Total Spent (Logistics)</div>
+                <div id="kpiBudget" class="kpi-value" style="font-size:28px;">...</div>
+                <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
+            </div>
+
+            <div class="budget-grid">
+                <div>
+                    <div class="budget-sub-label">Actual Budget</div>
+                    <div id="kpiBudgetActual" class="budget-sub-value">...</div>
+                </div>
+                <div>
+                    <div class="budget-sub-label">Planned Budget</div>
+                    <div id="kpiBudgetPlanned" class="budget-sub-value">...</div>
+                </div>
+            </div>
+
+            <div class="budget-progress-bg">
+                <div id="budgetProgressBar" class="budget-progress-fill"></div>
+            </div>
+            <div class="budget-progress-text">
+                <span id="budgetProgressText">0% of Actual</span>
+                <span id="budgetPlanComparison">...</span>
+            </div>
+        </div>
+
         <div id="cardJobs" class="card" style="grid-column: span 2;">
             <div class="card-header-row"><div class="card-label">Jobs Created</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Impact</span></div></div>
             <div id="kpiJobs" class="kpi-value">...</div>
@@ -232,12 +270,22 @@
       <div class="kpi-controls-box">
         <div style="flex:1;">
             <div style="font-size:14px; font-weight:600; color:#d946ef; margin-bottom:4px;">Yearly KPIs</div>
-            <div style="font-size:11px; color:#aaa;">Independent stats for the selected year (not tied to activity rows).</div>
+            <div style="font-size:11px; color:#aaa;">Enter high-level numbers for the year.</div>
         </div>
-        <div class="form-group" style="width:140px;">
+        
+        <div class="form-group" style="width:120px;">
             <label class="form-label">Jobs Created</label>
             <input type="number" id="inpYearlyJobs" class="form-input" placeholder="0">
         </div>
+        <div class="form-group" style="width:140px;">
+            <label class="form-label">Actual Budget ($)</label>
+            <input type="number" id="inpActualBudget" class="form-input" placeholder="0">
+        </div>
+        <div class="form-group" style="width:140px;">
+            <label class="form-label">Planned Budget ($)</label>
+            <input type="number" id="inpPlannedBudget" class="form-input" placeholder="0">
+        </div>
+        
         <button class="btn-save" style="width:auto; height:35px; margin-top:0;" onclick="saveYearlyMetrics()">Update KPIs</button>
       </div>
 
@@ -258,7 +306,8 @@
             <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
             <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
             <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Budget</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Budget Spent ($)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+            
             <div class="form-group full-width">
               <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
               <label class="form-label">Description (Optional)</label>
@@ -296,7 +345,7 @@
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';  
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description" };
+  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description", jobs: "Jobs Created" };
   const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
 
   let isAdmin = false; 
@@ -304,34 +353,46 @@
   let comparisonLogistics = [];
   let rawSocial = [];
   let rawRegistration = [];
-  let yearlyMetrics = {}; // Stores { 2025: 500, 2024: 400 }
+  let yearlyMetrics = {}; // Stores { 2025: { jobs:500, actual:1M, planned:1.2M } }
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
-  // --- 1. NEW LOGIC: YEARLY METRICS ---
+  // --- YEARLY METRICS ---
   async function fetchYearlyMetrics() {
       const { data, error } = await supabaseClient.from('yearly_metrics').select('*');
       if (data) {
           yearlyMetrics = {};
-          data.forEach(row => { yearlyMetrics[row.year] = row.jobs_created; });
+          data.forEach(row => { 
+              yearlyMetrics[row.year] = { 
+                  jobs: row.jobs_created || 0,
+                  actual: row.actual_budget || 0,
+                  planned: row.planned_budget || 0
+              }; 
+          });
       }
   }
 
   async function saveYearlyMetrics() {
       const year = parseInt(document.getElementById("viewYear").value);
       const jobs = document.getElementById("inpYearlyJobs").value;
+      const actual = document.getElementById("inpActualBudget").value;
+      const planned = document.getElementById("inpPlannedBudget").value;
       
-      if(!year || jobs === "") { alert("Please check inputs"); return; }
+      if(!year) return;
       
-      // Upsert: Insert or Update if year exists
-      const { error } = await supabaseClient.from('yearly_metrics').upsert({ year: year, jobs_created: jobs });
+      const { error } = await supabaseClient.from('yearly_metrics').upsert({ 
+          year: year, 
+          jobs_created: jobs || 0,
+          actual_budget: actual || 0,
+          planned_budget: planned || 0
+      });
       
       if(error) { console.error(error); alert("Error saving KPIs"); }
       else { 
           alert("KPIs Updated!"); 
-          await fetchYearlyMetrics(); // Refresh data
-          renderKPIsAndCharts(year); // Refresh UI
+          await fetchYearlyMetrics(); 
+          renderKPIsAndCharts(year); 
       }
   }
 
@@ -346,7 +407,6 @@
       return { t: `${a} ${Math.abs(d).toFixed(1)}% vs ${prevYear}`, c: `kpi-delta ${cl}` };
   }
 
-  // --- REPORT GENERATOR ---
   function downloadReport() {
       const startStr = document.getElementById("reportStart").value; const endStr = document.getElementById("reportEnd").value;
       if (!startStr || !endStr) { alert("Please select both Start and End dates."); return; }
@@ -362,19 +422,13 @@
       const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
   }
 
-  // --- AI WRITER ---
   function autoGenerateDesc() {
     const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const date = document.getElementById("inpDate").value; const aud = document.getElementById("inpAudience").value; const stat = document.getElementById("inpStatus").value;
     if (!name || !city || !date) { alert("Please fill in Name, City, and Date first!"); return; }
-    const templates = [
-        `The ${name} was successfully ${stat.toLowerCase()} in ${city} on ${date}. This initiative engaged ${aud || 'various'} participants, focusing on innovation and skill development within the community.`,
-        `On ${date}, the team conducted the ${name} in ${city}. With a turnout of ${aud || 0}, the event aimed to foster growth and support local talent under the CER program.`,
-        `Zain Iraq is proud to have supported the ${name} in ${city}. Held on ${date}, this activity reached ${aud || 0} individuals, reinforcing our commitment to youth empowerment.`
-    ];
+    const templates = [`The ${name} was successfully ${stat.toLowerCase()} in ${city} on ${date}. This initiative engaged ${aud || 'various'} participants.`,`On ${date}, the team conducted the ${name} in ${city}. With a turnout of ${aud || 0}, the event aimed to foster growth.`];
     document.getElementById("inpDesc").value = templates[Math.floor(Math.random() * templates.length)];
   }
 
-  // --- EDITING & ADMIN ---
   function startEdit(id) {
     const row = currentLogistics.find(r => r.id === id); if (!row) return;
     document.getElementById("editId").value = id; 
@@ -385,7 +439,6 @@
     document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; 
     document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; 
     document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
-    
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
     document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
@@ -394,7 +447,6 @@
     document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; 
     document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; 
     document.getElementById("inpDesc").value = "";
-    
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
   }
   function toggleAdminMode() {
@@ -404,9 +456,11 @@
       else { 
           dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); 
           renderTable(); 
-          // Pre-fill the Yearly Stats input
           const year = document.getElementById("viewYear").value;
-          document.getElementById("inpYearlyJobs").value = yearlyMetrics[year] || 0;
+          const metrics = yearlyMetrics[year] || { jobs:0, actual:0, planned:0 };
+          document.getElementById("inpYearlyJobs").value = metrics.jobs;
+          document.getElementById("inpActualBudget").value = metrics.actual;
+          document.getElementById("inpPlannedBudget").value = metrics.planned;
       }
     }
   }
@@ -415,33 +469,14 @@
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
-      tr.innerHTML = `
-        <td>${row[COLS_LOGISTICS.start_date]}</td>
-        <td><strong>${row[COLS_LOGISTICS.name]}</strong></td>
-        <td>${row[COLS_LOGISTICS.city]}</td>
-        <td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td>
-        <td class="desc-cell">${desc}</td>
-        <td style="text-align:center; white-space:nowrap;">
-            <button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button>
-            <button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button>
-        </td>`; 
+      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; 
       tbody.appendChild(tr);
     });
   }
   async function saveActivity() {
     const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
     if (!name || !date) { alert("Name and Date are required!"); return; }
-    
-    const rowData = { 
-        [COLS_LOGISTICS.name]: name, 
-        [COLS_LOGISTICS.start_date]: date, 
-        [COLS_LOGISTICS.city]: city, 
-        [COLS_LOGISTICS.audience]: aud, 
-        [COLS_LOGISTICS.budget]: bud, 
-        [COLS_LOGISTICS.status]: stat, 
-        [COLS_LOGISTICS.description]: desc 
-    };
-    
+    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc };
     try {
       if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; alert("Updated successfully!"); } 
       else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; alert("Added successfully!"); }
@@ -456,7 +491,10 @@
   function handleYearChange() { loadData().then(() => { 
       const y = document.getElementById("viewYear").value;
       document.getElementById("adminYearLabel").textContent = y; 
-      document.getElementById("inpYearlyJobs").value = yearlyMetrics[y] || 0; // Update input
+      const metrics = yearlyMetrics[y] || { jobs:0, actual:0, planned:0 };
+      document.getElementById("inpYearlyJobs").value = metrics.jobs;
+      document.getElementById("inpActualBudget").value = metrics.actual;
+      document.getElementById("inpPlannedBudget").value = metrics.planned;
       if (document.getElementById("adminPanel").style.display === "block") renderTable(); 
   }); }
 
@@ -467,7 +505,6 @@
       const prevYear = selectedYear - 1;
       document.getElementById("titleYear").textContent = selectedYear;
 
-      // 1. Fetch Logistics
       const { data: curr, error: e1 } = await supabaseClient.from('logistics_all').select('*').eq('Year', selectedYear);
       if (e1) throw e1; currentLogistics = curr || [];
       document.getElementById("reportStart").value = `${selectedYear}-01-01`; document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
@@ -475,10 +512,8 @@
       const { data: prev } = await supabaseClient.from('logistics_all').select('*').eq('Year', prevYear);
       comparisonLogistics = prev || [];
 
-      // 2. Fetch Yearly Metrics (Jobs)
       await fetchYearlyMetrics();
 
-      // 3. Fetch Social & Reg
       const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
       rawSocial = soc || [];
       const d1 = await fetchAllRows('registration', '2025');
@@ -527,20 +562,45 @@
     document.getElementById("rowSocial").style.display = displayMode; 
     document.getElementById("rowCharts").style.display = displayMode; 
     document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
-    
     document.getElementById("cardJobs").style.display = blockMode; 
     document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
 
     const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
     document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); 
     document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); 
-    document.getElementById("kpiBudget").textContent = mCurr.budget.toLocaleString(); 
+    document.getElementById("kpiBudget").textContent = mCurr.budget.toLocaleString(); // Total Spent
     document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
     
-    // FETCH JOBS FROM YEARLY METRICS
+    // YEARLY METRICS
     const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-    const currentJobs = yearlyMetrics[selectedYear] || 0;
-    document.getElementById("kpiJobs").textContent = parseInt(currentJobs).toLocaleString();
+    const metrics = yearlyMetrics[selectedYear] || { jobs:0, actual:0, planned:0 };
+    
+    // Jobs
+    document.getElementById("kpiJobs").textContent = parseInt(metrics.jobs).toLocaleString();
+    
+    // Budget Calculations
+    const spent = mCurr.budget;
+    const actual = parseInt(metrics.actual) || 0;
+    const planned = parseInt(metrics.planned) || 0;
+    
+    document.getElementById("kpiBudgetActual").textContent = actual.toLocaleString();
+    document.getElementById("kpiBudgetPlanned").textContent = planned.toLocaleString();
+    
+    // Progress Bar (Spent vs Actual)
+    let pct = 0;
+    if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
+    document.getElementById("budgetProgressBar").style.width = pct + "%";
+    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
+    
+    // Compare Actual vs Planned
+    if(planned > 0) {
+        const diff = ((actual - planned) / planned) * 100;
+        const sign = diff > 0 ? "+" : "";
+        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`;
+        document.getElementById("budgetPlanComparison").style.color = diff > 0 ? "#f97373" : "#4ade80"; // Red if over budget
+    } else {
+        document.getElementById("budgetPlanComparison").textContent = "";
+    }
 
     const dAct = calculateDelta(mCurr.activities, mPrev.activities); document.getElementById("kpiActivitiesDelta").textContent = dAct.t; document.getElementById("kpiActivitiesDelta").className = dAct.c;
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
@@ -563,43 +623,33 @@
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size };
   }
 
-  // --- SPLIT CHARTS: SIM ---
+  // --- SPLIT CHARTS ---
   function updateSimChart() {
     const yearFilter = document.getElementById("simYearFilter").value; 
     let zain=0, asiacell=0, korek=0;
-    
     rawRegistration.forEach(row => { 
         if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
         const phoneVal = getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"]); 
         let p = String(phoneVal).replace(/\D/g,""); 
         if(p.startsWith("00964")) p=p.slice(5); else if(p.startsWith("964")) p=p.slice(3); 
         if(p.length===11 && p.startsWith("0")) p=p.slice(1); 
-        if(p.length===10 && p.startsWith("7")) { 
-            if(p.startsWith("78")||p.startsWith("79")) zain++; 
-            else if(p.startsWith("77")) asiacell++; 
-            else if(p.startsWith("75")) korek++; 
-        } 
+        if(p.length===10 && p.startsWith("7")) { if(p.startsWith("78")||p.startsWith("79")) zain++; else if(p.startsWith("77")) asiacell++; else if(p.startsWith("75")) korek++; } 
     });
-    
     const totalS = zain + asiacell + korek;
     const zPct = totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0;
     document.getElementById("kpiSimShare").textContent = zPct + "%";
-    
     const colorsS = { Zain: "#d946ef", Asiacell: "#ef4444", Korek: "#3b82f6" };
     const legendDataS = [{ label: "Zain", val: zain, col: colorsS.Zain }, { label: "Asiacell", val: asiacell, col: colorsS.Asiacell }, { label: "Korek", val: korek, col: colorsS.Korek }];
     let legendHTMLS = "";
     legendDataS.forEach(d => { const pct = totalS > 0 ? ((d.val/totalS)*100).toFixed(1) + "%" : "0%"; legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
     document.getElementById("simLegend").innerHTML = legendHTMLS;
-
     if (simChartInstance) simChartInstance.destroy(); 
     simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:[colorsS.Zain, colorsS.Asiacell, colorsS.Korek], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
   }
 
-  // --- SPLIT CHARTS: GENDER ---
   function updateGenderChart() {
     const yearFilter = document.getElementById("genderYearFilter").value;
     let male=0, female=0;
-
     rawRegistration.forEach(row => { 
         if (yearFilter !== "all" && row._derivedYear !== yearFilter) return;
         const genderVal = getSmartValue(row, ["Gender", "Sex"]); 
@@ -607,21 +657,16 @@
         if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) female++; 
         else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) male++; 
     });
-
     const totalG = male + female;
     const fPct = totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0;
     const mPct = totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0;
-    
-    // Dual Highlight
     document.getElementById("kpiFemaleShare").textContent = fPct + "%";
     document.getElementById("kpiMaleShare").textContent = mPct + "%";
-
     const colorsG = { Male: "#38bdf8", Female: "#f472b6" };
     const legendDataG = [{ label: "Male", val: male, col: colorsG.Male }, { label: "Female", val: female, col: colorsG.Female }];
     let legendHTMLG = "";
     legendDataG.forEach(d => { const pct = totalG > 0 ? ((d.val/totalG)*100).toFixed(1) + "%" : "0%"; legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
     document.getElementById("genderLegend").innerHTML = legendHTMLG;
-
     if (genderChartInstance) genderChartInstance.destroy(); 
     genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:[colorsG.Male, colorsG.Female], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
   }
@@ -629,13 +674,8 @@
   function populateYearFilters() { 
       const uniqueYears = new Set(); 
       rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
-      
-      const simSelect = document.getElementById("simYearFilter"); 
-      simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
-      
-      const genSelect = document.getElementById("genderYearFilter");
-      genSelect.innerHTML = '<option value="all" selected>All Years</option>';
-
+      const simSelect = document.getElementById("simYearFilter"); simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
+      const genSelect = document.getElementById("genderYearFilter"); genSelect.innerHTML = '<option value="all" selected>All Years</option>';
       Array.from(uniqueYears).sort().forEach(y => { 
           const opt1 = document.createElement("option"); opt1.value = y; opt1.textContent = y; simSelect.appendChild(opt1);
           const opt2 = document.createElement("option"); opt2.value = y; opt2.textContent = y; genSelect.appendChild(opt2);
