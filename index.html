@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (IQD Base)</title>
+  <title>CER Impact Dashboard (Zain Implementation)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -72,7 +72,6 @@
     .legend-right { text-align: right; min-width: 60px; }
     .legend-pct { display: block; font-weight: 700; color: #fff; }
     .legend-count { display: block; font-size: 10px; color: var(--text-soft); }
-    
     .card-filter { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text-muted); }
 
     /* BUDGET CARD STYLES */
@@ -82,6 +81,14 @@
     .budget-progress-bg { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; margin-top: 8px; position: relative; overflow: hidden; }
     .budget-progress-fill { height: 100%; background: var(--success); border-radius: 999px; width: 0%; transition: width 1s ease; }
     .budget-progress-text { font-size: 10px; color: var(--text-soft); margin-top: 4px; display: flex; justify-content: space-between; }
+
+    /* CHECKBOX STYLE */
+    .checkbox-wrapper {
+      display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05);
+      padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-subtle); cursor: pointer;
+    }
+    .checkbox-wrapper input { cursor: pointer; accent-color: var(--accent); width: 16px; height: 16px; }
+    .checkbox-label { font-size: 12px; color: #fff; user-select: none; }
 
     /* ADMIN */
     #adminPanel { display: none; }
@@ -141,6 +148,13 @@
       </div>
       <div class="top-controls">
         <div class="pill">
+          Currency:
+          <select id="currencySelectorNav" onchange="syncCurrency('nav')">
+            <option value="IQD" selected>IQD (د.ع)</option>
+            <option value="USD">USD ($)</option>
+          </select>
+        </div>
+        <div class="pill">
           Logistics Year:
           <select id="viewYear" onchange="handleYearChange()">
             <option value="2026">2026</option>
@@ -167,7 +181,15 @@
       </div>
 
       <div class="grid grid-3" style="margin-bottom: 20px;">
-        <div class="card"><div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div><div id="kpiActivities" class="kpi-value">...</div><div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card">
+            <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div>
+            <div id="kpiActivities" class="kpi-value">...</div>
+            <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
+            <div style="font-size:12px; color:#d946ef; margin-top:4px;">
+                <span id="kpiZainRate">0%</span> Zain Led
+            </div>
+        </div>
+        
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
         <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
@@ -177,7 +199,7 @@
         <div id="cardBudget" class="card" style="grid-column: span 2;">
             <div class="card-header-row">
                 <div class="card-label">Budget Analysis</div>
-                <select id="currencySelector" onchange="refreshView()" class="card-filter">
+                <select id="currencySelectorCard" onchange="syncCurrency('card')" class="card-filter">
                     <option value="IQD" selected>IQD (د.ع)</option>
                     <option value="USD">USD ($)</option>
                 </select>
@@ -272,6 +294,14 @@
             <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
             <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
             <div class="form-group"><label class="form-label">Budget Spent (IQD)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+            
+            <div class="form-group" style="display:flex; align-items:flex-end; height:60px;">
+                <label class="checkbox-wrapper">
+                    <input type="checkbox" id="inpZainImplemented">
+                    <span class="checkbox-label">Implemented by Zain Team</span>
+                </label>
+            </div>
+
             <div class="form-group full-width">
               <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
               <label class="form-label">Description (Optional)</label>
@@ -284,7 +314,7 @@
 
       <div class="data-table-wrapper">
         <table id="dataTable">
-          <thead><tr><th>Date</th><th>Activity Name</th><th>City</th><th>Audience</th><th>Description</th><th style="width:70px;">Actions</th></tr></thead>
+          <thead><tr><th>Date</th><th>Activity Name</th><th>City</th><th>Audience</th><th>Zain Led?</th><th>Description</th><th style="width:70px;">Actions</th></tr></thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
@@ -307,7 +337,7 @@
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';  
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description", jobs: "Jobs Created" };
+  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description", jobs: "Jobs Created", is_zain: "is_zain_implemented" };
   const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
   const IQD_RATE = 1320;
 
@@ -321,24 +351,28 @@
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
-  // --- CURRENCY HELPER (Logic Flipped) ---
+  // --- CURRENCY HELPER ---
+  function syncCurrency(source) {
+      const val = document.getElementById(source === 'nav' ? 'currencySelectorNav' : 'currencySelectorCard').value;
+      document.getElementById('currencySelectorNav').value = val;
+      document.getElementById('currencySelectorCard').value = val;
+      applyFilters();
+  }
+
   function formatMoney(amount) {
-      const cur = document.getElementById("currencySelector").value;
+      const cur = document.getElementById("currencySelectorNav").value;
       if (!amount) amount = 0;
-      
       if (cur === "IQD") {
-          // Data IS in IQD, so just show it
+          // Data is IQD
           return amount.toLocaleString() + " د.ع";
       } else {
-          // Convert IQD to USD
+          // Divide by 1320 for USD
           const val = amount / IQD_RATE;
           return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0});
       }
   }
 
-  function refreshView() {
-      applyFilters();
-  }
+  function refreshView() { applyFilters(); }
 
   async function fetchYearlyMetrics() {
       const { data, error } = await supabaseClient.from('yearly_metrics').select('*');
@@ -381,10 +415,11 @@
       const start = new Date(startStr); const end = new Date(endStr); end.setHours(23,59,59); 
       const filtered = currentLogistics.filter(row => { const d = new Date(row[COLS_LOGISTICS.start_date]); return d >= start && d <= end; });
       if (filtered.length === 0) { alert("No activities found in this date range."); return; }
-      let csv = "Date,Activity Name,City,Audience,Budget (IQD),Status,Description\n";
+      let csv = "Date,Activity Name,City,Audience,Budget (IQD),Zain Led?,Status,Description\n";
       filtered.forEach(row => {
           const cleanDesc = (row[COLS_LOGISTICS.description] || "").replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
+          const isZain = row[COLS_LOGISTICS.is_zain] ? "Yes" : "No";
+          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${isZain}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
           csv += line + "\n";
       });
       const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
@@ -399,12 +434,21 @@
 
   function startEdit(id) {
     const row = currentLogistics.find(r => r.id === id); if (!row) return;
-    document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    document.getElementById("editId").value = id; 
+    document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; 
+    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; 
+    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; 
+    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; 
+    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; 
+    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; 
+    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; // Checkbox state
+    
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
     document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
   function cancelEdit() {
-    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = "";
+    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; document.getElementById("inpZainImplemented").checked = false;
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
   }
   function toggleAdminMode() {
@@ -427,14 +471,17 @@
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
-      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; 
+      const isZain = row[COLS_LOGISTICS.is_zain] ? '<span style="color:#d946ef">✔ Yes</span>' : '<span style="color:#6b7280">No</span>';
+      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td>${isZain}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; 
       tbody.appendChild(tr);
     });
   }
   async function saveActivity() {
     const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
+    const isZain = document.getElementById("inpZainImplemented").checked;
+    
     if (!name || !date) { alert("Name and Date are required!"); return; }
-    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc };
+    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc, [COLS_LOGISTICS.is_zain]: isZain };
     try {
       if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; alert("Updated successfully!"); } 
       else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; alert("Added successfully!"); }
@@ -532,6 +579,10 @@
     document.getElementById("kpiBudget").textContent = formatMoney(mCurr.budget); 
     document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
     
+    // ZAIN IMPLEMENTATION RATE
+    const zainRate = mCurr.activities > 0 ? ((mCurr.zainLed / mCurr.activities) * 100).toFixed(1) : 0;
+    document.getElementById("kpiZainRate").textContent = zainRate + "%";
+
     const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
     const metrics = yearlyMetrics[selectedYear] || { jobs:0, actual:0, planned:0 };
     
@@ -567,7 +618,8 @@
   }
   
   function computeMetrics(data, quarterFilter) {
-    let activities = 0, totalAudience = 0, totalBudget = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+    let activities = 0, totalAudience = 0, totalBudget = 0, zainLed = 0; 
+    const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
     data.forEach(row => {
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
@@ -575,9 +627,10 @@
       activities++; 
       totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); 
       totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
     }); 
-    return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size };
+    return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
   // --- SPLIT CHARTS ---
