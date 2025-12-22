@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Multi-Currency)</title>
+  <title>CER Impact Dashboard (IQD Base)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -72,6 +72,7 @@
     .legend-right { text-align: right; min-width: 60px; }
     .legend-pct { display: block; font-weight: 700; color: #fff; }
     .legend-count { display: block; font-size: 10px; color: var(--text-soft); }
+    
     .card-filter { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text-muted); }
 
     /* BUDGET CARD STYLES */
@@ -96,6 +97,7 @@
     .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
     .full-width { grid-column: span 4; }
     @media (max-width: 800px) { .form-grid { grid-template-columns: 1fr; } .full-width { grid-column: auto; } }
+    
     .form-group { width: 100%; }
     .form-label { font-size: 11px; color: var(--text-soft); margin-bottom: 4px; display: block; }
     .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); color: white; padding: 8px 12px; border-radius: 6px; outline: none; }
@@ -139,13 +141,6 @@
       </div>
       <div class="top-controls">
         <div class="pill">
-          Currency:
-          <select id="currencySelector" onchange="refreshView()">
-            <option value="USD">USD ($)</option>
-            <option value="IQD">IQD (د.ع)</option>
-          </select>
-        </div>
-        <div class="pill">
           Logistics Year:
           <select id="viewYear" onchange="handleYearChange()">
             <option value="2026">2026</option>
@@ -180,16 +175,25 @@
       <div class="grid grid-4" style="margin-bottom: 20px;">
         
         <div id="cardBudget" class="card" style="grid-column: span 2;">
-            <div class="card-header-row"><div class="card-label">Budget Analysis</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Finance</span></div></div>
+            <div class="card-header-row">
+                <div class="card-label">Budget Analysis</div>
+                <select id="currencySelector" onchange="refreshView()" class="card-filter">
+                    <option value="IQD" selected>IQD (د.ع)</option>
+                    <option value="USD">USD ($)</option>
+                </select>
+            </div>
+            
             <div style="margin-bottom:12px;">
                 <div class="budget-sub-label">Total Spent (Logistics)</div>
                 <div id="kpiBudget" class="kpi-value" style="font-size:28px;">...</div>
                 <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
             </div>
+
             <div class="budget-grid">
                 <div><div class="budget-sub-label">Actual Budget</div><div id="kpiBudgetActual" class="budget-sub-value">...</div></div>
                 <div><div class="budget-sub-label">Planned Budget</div><div id="kpiBudgetPlanned" class="budget-sub-value">...</div></div>
             </div>
+
             <div class="budget-progress-bg"><div id="budgetProgressBar" class="budget-progress-fill"></div></div>
             <div class="budget-progress-text"><span id="budgetProgressText">0% of Actual</span><span id="budgetPlanComparison">...</span></div>
         </div>
@@ -242,11 +246,11 @@
       <div class="kpi-controls-box">
         <div style="flex:1;">
             <div style="font-size:14px; font-weight:600; color:#d946ef; margin-bottom:4px;">Yearly KPIs</div>
-            <div style="font-size:11px; color:#aaa;">IMPORTANT: Always enter amounts in USD ($). The dashboard will handle conversion.</div>
+            <div style="font-size:11px; color:#aaa;">IMPORTANT: Enter amounts in IQD (د.ع). The dashboard handles conversion.</div>
         </div>
         <div class="form-group" style="width:120px;"><label class="form-label">Jobs Created</label><input type="number" id="inpYearlyJobs" class="form-input" placeholder="0"></div>
-        <div class="form-group" style="width:140px;"><label class="form-label">Actual Budget ($)</label><input type="number" id="inpActualBudget" class="form-input" placeholder="0"></div>
-        <div class="form-group" style="width:140px;"><label class="form-label">Planned Budget ($)</label><input type="number" id="inpPlannedBudget" class="form-input" placeholder="0"></div>
+        <div class="form-group" style="width:140px;"><label class="form-label">Actual Budget (IQD)</label><input type="number" id="inpActualBudget" class="form-input" placeholder="0"></div>
+        <div class="form-group" style="width:140px;"><label class="form-label">Planned Budget (IQD)</label><input type="number" id="inpPlannedBudget" class="form-input" placeholder="0"></div>
         <button class="btn-save" style="width:auto; height:35px; margin-top:0;" onclick="saveYearlyMetrics()">Update KPIs</button>
       </div>
 
@@ -267,7 +271,7 @@
             <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
             <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
             <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Budget Spent ($)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+            <div class="form-group"><label class="form-label">Budget Spent (IQD)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
             <div class="form-group full-width">
               <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
               <label class="form-label">Description (Optional)</label>
@@ -317,21 +321,22 @@
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
-  // --- CURRENCY HELPER ---
+  // --- CURRENCY HELPER (Logic Flipped) ---
   function formatMoney(amount) {
       const cur = document.getElementById("currencySelector").value;
       if (!amount) amount = 0;
       
       if (cur === "IQD") {
-          const val = amount * IQD_RATE;
-          return val.toLocaleString() + " د.ع";
+          // Data IS in IQD, so just show it
+          return amount.toLocaleString() + " د.ع";
       } else {
-          return "$" + amount.toLocaleString();
+          // Convert IQD to USD
+          const val = amount / IQD_RATE;
+          return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0});
       }
   }
 
   function refreshView() {
-      // Just re-run filters to update UI with new currency
       applyFilters();
   }
 
@@ -376,7 +381,7 @@
       const start = new Date(startStr); const end = new Date(endStr); end.setHours(23,59,59); 
       const filtered = currentLogistics.filter(row => { const d = new Date(row[COLS_LOGISTICS.start_date]); return d >= start && d <= end; });
       if (filtered.length === 0) { alert("No activities found in this date range."); return; }
-      let csv = "Date,Activity Name,City,Audience,Budget,Status,Description\n";
+      let csv = "Date,Activity Name,City,Audience,Budget (IQD),Status,Description\n";
       filtered.forEach(row => {
           const cleanDesc = (row[COLS_LOGISTICS.description] || "").replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
           const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
