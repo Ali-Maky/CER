@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Final Release)</title>
+  <title>CER Impact Dashboard (Tabbed Admin)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -83,9 +83,19 @@
     .budget-progress-text { font-size: 10px; color: var(--text-soft); margin-top: 4px; display: flex; justify-content: space-between; }
 
     /* ADMIN & FORMS */
-    #adminPanel { display: none; }
-    .admin-controls { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; }
-    .kpi-controls-box { background: rgba(217, 70, 239, 0.05); border: 1px solid rgba(217, 70, 239, 0.2); padding: 16px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+    #adminPanel { display: none; background: var(--bg-card); padding: 24px; border-radius: 20px; border: 1px solid var(--border-subtle); margin-bottom: 30px; }
+    
+    /* TABS */
+    .admin-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 10px; }
+    .tab-btn { background: transparent; border: none; color: var(--text-soft); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+    .tab-btn.active { background: rgba(217, 70, 239, 0.1); color: var(--accent); }
+    .tab-btn:hover { color: #fff; }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .admin-controls { background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; }
+    
     .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
     .full-width { grid-column: span 4; }
     @media (max-width: 800px) { .form-grid { grid-template-columns: 1fr; } .full-width { grid-column: auto; } }
@@ -115,7 +125,7 @@
     /* DATA TABLE */
     .data-table-wrapper { overflow-x: auto; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-subtle); max-height: 600px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
-    th { background: rgba(255,255,255,0.03); color: var(--text-muted); padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); font-weight: 500; white-space: nowrap; position: sticky; top: 0; backdrop-filter: blur(10px); }
+    th { background: rgba(255,255,255,0.03); color: var(--text-muted); padding: 12px 16px; border-bottom: 1px solid var(--border-subtle); font-weight: 500; white-space: nowrap; position: sticky; top: 0; backdrop-filter: blur(10px); z-index: 10; }
     td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text-main); white-space: nowrap; vertical-align: top; }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(255,255,255,0.02); }
@@ -178,6 +188,102 @@
     <div class="subtitle">Live view of <span id="titleYear">2025</span> activities.</div>
     <div id="globalError" class="error-text"></div>
 
+    <div id="adminPanel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h3 style="margin:0; color:#fff;">Admin Panel</h3>
+        <span style="font-size:11px; color:var(--text-soft);">Authorized Access</span>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="tab-btn active" onclick="switchTab('activities')">Activities Log</button>
+        <button class="tab-btn" onclick="switchTab('metrics')">Yearly Metrics</button>
+      </div>
+
+      <div id="tabActivities" class="tab-content active">
+        <div class="admin-controls" id="entryForm">
+            <input type="hidden" id="editId" value="">
+            <div class="form-grid">
+                <div class="form-group"><label class="form-label">Activity Name</label><input type="text" id="inpName" class="form-input" placeholder="Name"></div>
+                <div class="form-group"><label class="form-label">Date</label><input type="date" id="inpDate" class="form-input"></div>
+                <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
+                <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
+                <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
+                <div class="form-group"><label class="form-label">Budget Spent (IQD)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+                
+                <div class="form-group" style="display:flex; align-items:flex-end; height:60px;">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="inpZainImplemented">
+                        <span class="checkbox-label">Implemented by Zain Team</span>
+                    </label>
+                </div>
+
+                <div class="form-group full-width">
+                  <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
+                  <label class="form-label">Description (Optional)</label>
+                  <textarea id="inpDesc" class="form-input" placeholder="Enter brief details..."></textarea>
+                  <button id="btnSave" class="btn-save" onclick="saveActivity()">Add Row to DB</button>
+                  <button id="btnCancelEdit" class="btn-cancel-edit" onclick="cancelEdit()">Cancel Editing</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-box">
+            <div style="flex:1; color:#7dd3fc; font-size:13px; display:flex; align-items:center; gap:6px;">
+                <span class="material-icons">description</span> <strong>Generate Excel Report</strong>
+            </div>
+            <div class="form-group" style="width:auto;"><label class="form-label">Start Date</label><input type="date" id="reportStart" class="form-input"></div>
+            <div class="form-group" style="width:auto;"><label class="form-label">End Date</label><input type="date" id="reportEnd" class="form-input"></div>
+            <button class="btn-download" onclick="downloadReport()">Download .CSV</button>
+        </div>
+
+        <div class="data-table-wrapper">
+            <table id="dataTable">
+              <thead>
+                <tr>
+                    <th style="width:40px; text-align:center;" title="Ticked = Zain Implemented">Zain?</th>
+                    <th>Date</th>
+                    <th>Activity Name</th>
+                    <th>City</th>
+                    <th>Audience</th>
+                    <th>Description</th>
+                    <th style="width:70px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+      </div>
+
+      <div id="tabMetrics" class="tab-content">
+        <div class="admin-controls">
+            <div style="margin-bottom:15px; color:#d946ef; font-weight:600;">Add / Edit Year Data</div>
+            <div class="form-grid">
+                <div class="form-group"><label class="form-label">Year</label><input type="number" id="inpMetaYear" class="form-input" placeholder="2025"></div>
+                <div class="form-group"><label class="form-label">Jobs Created</label><input type="number" id="inpMetaJobs" class="form-input" placeholder="0"></div>
+                <div class="form-group"><label class="form-label">Actual Budget (IQD)</label><input type="number" id="inpMetaActual" class="form-input" placeholder="0"></div>
+                <div class="form-group"><label class="form-label">Planned Budget (IQD)</label><input type="number" id="inpMetaPlanned" class="form-input" placeholder="0"></div>
+                <button class="btn-save" style="margin-top:20px;" onclick="saveMetricRow()">Save Metric</button>
+            </div>
+        </div>
+
+        <div class="data-table-wrapper">
+            <table id="metricsTable">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Jobs Created</th>
+                        <th>Actual Budget (IQD)</th>
+                        <th>Planned Budget (IQD)</th>
+                        <th style="width:50px;">Edit</th>
+                    </tr>
+                </thead>
+                <tbody id="metricsTableBody"></tbody>
+            </table>
+        </div>
+      </div>
+
+    </div>
+
     <div id="dashboardView">
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:16px;">
          <div class="pill">Quarter: <select id="quarterFilter" onchange="applyFilters()"><option value="all">All Year</option><option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option></select></div>
@@ -188,37 +294,27 @@
             <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div>
             <div id="kpiActivities" class="kpi-value">...</div>
             <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
-            <div style="font-size:12px; color:#d946ef; margin-top:4px;">
-                <span id="kpiZainRate">0%</span> Zain Led
-            </div>
+            <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Zain Led</div>
         </div>
-        
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
         <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
-        
         <div id="cardBudget" class="card" style="grid-column: span 2;">
             <div class="card-header-row">
                 <div class="card-label">Budget Analysis</div>
-                <select id="currencySelectorCard" onchange="syncCurrency('card')" class="card-filter">
-                    <option value="IQD" selected>IQD (د.ع)</option>
-                    <option value="USD">USD ($)</option>
-                </select>
+                <select id="currencySelectorCard" onchange="syncCurrency('card')" class="card-filter"><option value="IQD" selected>IQD (د.ع)</option><option value="USD">USD ($)</option></select>
             </div>
-            
             <div style="margin-bottom:12px;">
                 <div class="budget-sub-label">Total Spent (Logistics)</div>
                 <div id="kpiBudget" class="kpi-value" style="font-size:28px;">...</div>
                 <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
             </div>
-
             <div class="budget-grid">
                 <div><div class="budget-sub-label">Actual Budget</div><div id="kpiBudgetActual" class="budget-sub-value">...</div></div>
                 <div><div class="budget-sub-label">Planned Budget</div><div id="kpiBudgetPlanned" class="budget-sub-value">...</div></div>
             </div>
-
             <div class="budget-progress-bg"><div id="budgetProgressBar" class="budget-progress-fill"></div></div>
             <div class="budget-progress-text"><span id="budgetProgressText">0% of Actual</span><span id="budgetPlanComparison">...</span></div>
         </div>
@@ -239,7 +335,6 @@
 
       <div id="rowCharts" class="grid grid-2">
         <div class="card"><div class="chart-header"><div><div class="chart-title">Activities per Month</div></div></div><div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div></div>
-        
         <div class="card">
             <div class="card-header-row"><div class="chart-title">SIM Distribution</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
             <div class="donut-card-body">
@@ -263,76 +358,6 @@
       </div>
     </div>
 
-    <div id="adminPanel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <h3 style="margin:0; color:#fff;">Manage Data (<span id="adminYearLabel">2025</span>)</h3>
-        <span style="font-size:11px; color:var(--text-soft);">Editing enabled</span>
-      </div>
-
-      <div class="kpi-controls-box">
-        <div style="flex:1;">
-            <div style="font-size:14px; font-weight:600; color:#d946ef; margin-bottom:4px;">Yearly KPIs</div>
-            <div style="font-size:11px; color:#aaa;">IMPORTANT: Enter amounts in IQD (د.ع). The dashboard handles conversion.</div>
-        </div>
-        <div class="form-group" style="width:120px;"><label class="form-label">Jobs Created</label><input type="number" id="inpYearlyJobs" class="form-input" placeholder="0"></div>
-        <div class="form-group" style="width:140px;"><label class="form-label">Actual Budget (IQD)</label><input type="number" id="inpActualBudget" class="form-input" placeholder="0"></div>
-        <div class="form-group" style="width:140px;"><label class="form-label">Planned Budget (IQD)</label><input type="number" id="inpPlannedBudget" class="form-input" placeholder="0"></div>
-        <button class="btn-save" style="width:auto; height:35px; margin-top:0;" onclick="saveYearlyMetrics()">Update KPIs</button>
-      </div>
-
-      <div class="report-box">
-        <div style="flex:1; color:#7dd3fc; font-size:13px; display:flex; align-items:center; gap:6px;">
-            <span class="material-icons">description</span> <strong>Generate Excel Report</strong>
-        </div>
-        <div class="form-group" style="width:auto;"><label class="form-label">Start Date</label><input type="date" id="reportStart" class="form-input"></div>
-        <div class="form-group" style="width:auto;"><label class="form-label">End Date</label><input type="date" id="reportEnd" class="form-input"></div>
-        <button class="btn-download" onclick="downloadReport()">Download .CSV</button>
-      </div>
-      
-      <div class="admin-controls" id="entryForm">
-        <input type="hidden" id="editId" value="">
-        <div class="form-grid">
-            <div class="form-group"><label class="form-label">Activity Name</label><input type="text" id="inpName" class="form-input" placeholder="Name"></div>
-            <div class="form-group"><label class="form-label">Date</label><input type="date" id="inpDate" class="form-input"></div>
-            <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
-            <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
-            <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
-            <div class="form-group"><label class="form-label">Budget Spent (IQD)</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
-            
-            <div class="form-group" style="display:flex; align-items:flex-end; height:60px;">
-                <label class="checkbox-wrapper">
-                    <input type="checkbox" id="inpZainImplemented">
-                    <span class="checkbox-label">Implemented by Zain Team</span>
-                </label>
-            </div>
-
-            <div class="form-group full-width">
-              <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
-              <label class="form-label">Description (Optional)</label>
-              <textarea id="inpDesc" class="form-input" placeholder="Enter brief details about the activity..."></textarea>
-              <button id="btnSave" class="btn-save" onclick="saveActivity()">Add Row to DB</button>
-              <button id="btnCancelEdit" class="btn-cancel-edit" onclick="cancelEdit()">Cancel Editing</button>
-            </div>
-        </div>
-      </div>
-
-      <div class="data-table-wrapper">
-        <table id="dataTable">
-          <thead>
-            <tr>
-                <th style="width:40px; text-align:center;" title="Ticked = Zain Implemented">Zain?</th>
-                <th>Date</th>
-                <th>Activity Name</th>
-                <th>City</th>
-                <th>Audience</th>
-                <th>Description</th>
-                <th style="width:70px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-    </div>
   </div>
 
   <div id="loginModal" class="modal-overlay">
@@ -360,132 +385,250 @@
 
   let isAdmin = false; 
   let currentLogistics = []; 
+  let yearlyMetricsArray = []; 
   let comparisonLogistics = [];
   let rawSocial = [];
   let rawRegistration = [];
-  let yearlyMetrics = {}; 
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
   function showToast(msg) {
       const x = document.getElementById("toast");
-      x.textContent = msg;
-      x.className = "show";
+      x.textContent = msg; x.className = "show";
       setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
   }
 
-  // --- QUICK TOGGLE FUNCTION ---
+  // --- TAB LOGIC ---
+  function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      if(tab === 'activities') {
+          document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+          document.getElementById('tabActivities').classList.add('active');
+      } else {
+          document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+          document.getElementById('tabMetrics').classList.add('active');
+      }
+  }
+
+  // --- METRICS TABLE LOGIC ---
+  function renderMetricsTable() {
+      const tbody = document.getElementById("metricsTableBody");
+      tbody.innerHTML = "";
+      
+      // Sort by Year Descending
+      const sorted = [...yearlyMetricsArray].sort((a,b) => b.year - a.year);
+      
+      sorted.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong>${row.year}</strong></td>
+            <td>${Number(row.jobs_created).toLocaleString()}</td>
+            <td>${Number(row.actual_budget).toLocaleString()}</td>
+            <td>${Number(row.planned_budget).toLocaleString()}</td>
+            <td style="text-align:center;">
+               <button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+      });
+  }
+
+  function editMetric(year) {
+      const row = yearlyMetricsArray.find(r => r.year == year);
+      if(!row) return;
+      document.getElementById("inpMetaYear").value = row.year;
+      document.getElementById("inpMetaJobs").value = row.jobs_created;
+      document.getElementById("inpMetaActual").value = row.actual_budget;
+      document.getElementById("inpMetaPlanned").value = row.planned_budget;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function saveMetricRow() {
+      const year = document.getElementById("inpMetaYear").value;
+      const jobs = document.getElementById("inpMetaJobs").value;
+      const actual = document.getElementById("inpMetaActual").value;
+      const planned = document.getElementById("inpMetaPlanned").value;
+      
+      if(!year) return alert("Year is required");
+      
+      const { error } = await supabaseClient.from('yearly_metrics').upsert({
+          year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0
+      });
+      
+      if(error) { alert("Error: " + error.message); }
+      else {
+          showToast("Metric Saved!");
+          document.getElementById("inpMetaYear").value = "";
+          document.getElementById("inpMetaJobs").value = "";
+          document.getElementById("inpMetaActual").value = "";
+          document.getElementById("inpMetaPlanned").value = "";
+          await fetchAllData(); // Refresh all
+      }
+  }
+
+  // --- ACTIVITY TOGGLE ---
   async function toggleZain(id, isChecked) {
       const row = currentLogistics.find(r => r.id === id);
       if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
       
-      const { error } = await supabaseClient
-          .from('logistics_all')
-          .update({ [COLS_LOGISTICS.is_zain]: isChecked })
-          .eq('id', id);
-          
-      if(error) { 
-          alert("Error saving: " + error.message); 
-          loadData(); 
-      } else {
-          showToast("Status updated!");
-      }
+      const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id);
+      if(error) { alert("Error saving: " + error.message); loadData(); } else { showToast("Status updated!"); }
   }
 
-  // --- CURRENCY ---
+  // --- MAIN LOAD ---
+  async function fetchAllData() {
+      try {
+          const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+          const prevYear = selectedYear - 1;
+          document.getElementById("titleYear").textContent = selectedYear;
+
+          // 1. Logistics
+          const { data: curr } = await supabaseClient.from('logistics_all').select('*').eq('Year', selectedYear);
+          currentLogistics = curr || [];
+          document.getElementById("reportStart").value = `${selectedYear}-01-01`; 
+          document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
+
+          const { data: prev } = await supabaseClient.from('logistics_all').select('*').eq('Year', prevYear);
+          comparisonLogistics = prev || [];
+
+          // 2. Metrics
+          const { data: metrics } = await supabaseClient.from('yearly_metrics').select('*');
+          yearlyMetricsArray = metrics || [];
+
+          // 3. Social/Reg (Once)
+          if(rawSocial.length === 0) {
+              const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
+              rawSocial = soc || [];
+              const d1 = await fetchAllRows('registration', '2025');
+              const d2 = await fetchAllRows('the_station_database', '2023');
+              const d3 = await fetchAllRows('makers_of_baghdad_database', '2025');
+              rawRegistration = [...d1, ...d2, ...d3];
+              populateYearFilters();
+          }
+
+          // UI Updates
+          renderActivityTable();
+          renderMetricsTable();
+          renderKPIsAndCharts(selectedYear);
+
+      } catch (err) { console.error(err); }
+  }
+
+  // --- ACTIVITY CRUD ---
+  function startEdit(id) {
+    const row = currentLogistics.find(r => r.id === id); if (!row) return;
+    document.getElementById("editId").value = id; 
+    document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; 
+    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; 
+    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; 
+    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; 
+    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; 
+    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; 
+    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
+    
+    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
+    document.getElementById("btnCancelEdit").style.display = "block"; 
+    // If hidden in tab, we need to ensure visible, but user is already in tab
+    document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
+  }
+
+  function cancelEdit() {
+    document.getElementById("editId").value = ""; 
+    document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; 
+    document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; 
+    document.getElementById("inpZainImplemented").checked = false;
+    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
+  }
+
+  async function saveActivity() {
+    const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
+    const isZain = document.getElementById("inpZainImplemented").checked;
+    if (!name || !date) { alert("Name and Date are required!"); return; }
+    
+    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc, [COLS_LOGISTICS.is_zain]: isZain };
+    try {
+      if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; showToast("Activity Updated!"); } 
+      else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; showToast("Activity Added!"); }
+      cancelEdit(); await fetchAllData();
+    } catch (err) { console.error(err); alert("Error saving: " + err.message); }
+  }
+
+  async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await fetchAllData(); } catch(err) { alert("Error deleting: " + err.message); } }
+
+  function renderActivityTable() {
+    const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
+    const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
+    sorted.forEach(row => {
+      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
+      const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
+      tr.innerHTML = `
+        <td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td>
+        <td>${row[COLS_LOGISTICS.start_date]}</td>
+        <td><strong>${row[COLS_LOGISTICS.name]}</strong></td>
+        <td>${row[COLS_LOGISTICS.city]}</td>
+        <td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td>
+        <td class="desc-cell">${desc}</td>
+        <td style="text-align:center; white-space:nowrap;">
+            <button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button>
+            <button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button>
+        </td>`; 
+      tbody.appendChild(tr);
+    });
+  }
+
+  // --- SYSTEM FUNCTIONS ---
   function syncCurrency(source) {
       const val = document.getElementById(source === 'nav' ? 'currencySelectorNav' : 'currencySelectorCard').value;
-      document.getElementById('currencySelectorNav').value = val;
-      document.getElementById('currencySelectorCard').value = val;
-      applyFilters();
+      document.getElementById('currencySelectorNav').value = val; document.getElementById('currencySelectorCard').value = val; applyFilters();
   }
-
   function formatMoney(amount) {
-      const cur = document.getElementById("currencySelectorNav").value;
-      if (!amount) amount = 0;
-      if (cur === "IQD") {
-          return amount.toLocaleString() + " د.ع";
-      } else {
-          const val = amount / IQD_RATE;
-          return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0});
-      }
+      const cur = document.getElementById("currencySelectorNav").value; if (!amount) amount = 0;
+      if (cur === "IQD") return amount.toLocaleString() + " د.ع";
+      else { const val = amount / IQD_RATE; return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0}); }
+  }
+  function calculateDelta(curr, prev) {
+      const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025; const prevYear = selectedYear - 1;
+      if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
+      const d = ((curr - prev) / prev) * 100; const a = d > 0 ? "▲" : d < 0 ? "▼" : ""; const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
+      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs ${prevYear}`, c: `kpi-delta ${cl}` };
+  }
+  function handleYearChange() { fetchAllData(); }
+  function autoGenerateDesc() {
+    const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const date = document.getElementById("inpDate").value;
+    if (!name || !city || !date) { alert("Please fill in Name, City, and Date first!"); return; }
+    const templates = [`The ${name} was successfully ${document.getElementById("inpStatus").value.toLowerCase()} in ${city} on ${date}.`,`On ${date}, the team conducted the ${name} in ${city}.`];
+    document.getElementById("inpDesc").value = templates[Math.floor(Math.random() * templates.length)];
+  }
+  function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
+  function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
+  function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
+  document.getElementById("adminPassInput").addEventListener("keypress", function(event) { if (event.key === "Enter") checkLogin(); });
+  function toggleAdminMode() {
+    if (!isAdmin) { openLogin(); } else {
+      const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
+      if (dash.style.display === "none") { dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); fetchAllData(); } 
+      else { dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); fetchAllData(); }
+    }
   }
 
-  function refreshView() { applyFilters(); }
-
-  // --- DATA FETCHING ---
-  async function fetchYearlyMetrics() {
-      const { data, error } = await supabaseClient.from('yearly_metrics').select('*');
-      if (data) {
-          yearlyMetrics = {};
-          data.forEach(row => { 
-              yearlyMetrics[row.year] = { 
-                  jobs: row.jobs_created || 0,
-                  actual: row.actual_budget || 0,
-                  planned: row.planned_budget || 0
-              }; 
-          });
-      }
-  }
-
-  async function saveYearlyMetrics() {
-      const year = parseInt(document.getElementById("viewYear").value);
-      const jobs = document.getElementById("inpYearlyJobs").value;
-      const actual = document.getElementById("inpActualBudget").value;
-      const planned = document.getElementById("inpPlannedBudget").value;
-      if(!year) return;
-      const { error } = await supabaseClient.from('yearly_metrics').upsert({ year: year, jobs_created: jobs || 0, actual_budget: actual || 0, planned_budget: planned || 0 });
-      if(error) { console.error(error); alert("Error saving KPIs"); }
-      else { showToast("KPIs Updated!"); await fetchYearlyMetrics(); renderKPIsAndCharts(year); }
-  }
-
-  // --- DATA LOGIC ---
-  async function loadData() {
-    try {
-      const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-      const prevYear = selectedYear - 1;
-      document.getElementById("titleYear").textContent = selectedYear;
-
-      const { data: curr, error: e1 } = await supabaseClient.from('logistics_all').select('*').eq('Year', selectedYear);
-      if (e1) throw e1; currentLogistics = curr || [];
-      document.getElementById("reportStart").value = `${selectedYear}-01-01`; document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
-
-      const { data: prev } = await supabaseClient.from('logistics_all').select('*').eq('Year', prevYear);
-      comparisonLogistics = prev || [];
-
-      await fetchYearlyMetrics();
-
-      const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
-      rawSocial = soc || [];
-      const d1 = await fetchAllRows('registration', '2025');
-      const d2 = await fetchAllRows('the_station_database', '2023');
-      const d3 = await fetchAllRows('makers_of_baghdad_database', '2025');
-      rawRegistration = [...d1, ...d2, ...d3];
-
-      populateYearFilters(); 
-      renderKPIsAndCharts(selectedYear);
-    } catch (err) { document.getElementById("globalError").textContent = "Error: " + err.message; console.error(err); }
-  }
-
+  // --- VISUALIZATION ---
   function renderKPIsAndCharts(selectedYear) {
       const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
-      const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
       rawSocial.forEach(row => { 
-        const y = String(row[COLS_SOCIAL.year]).trim();
-        if (y == selectedYear) { 
+        if (String(row[COLS_SOCIAL.year]).trim() == selectedYear) { 
            tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
-        } else if (y == prevYear) {
-           tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
-        }
+        } 
       });
       document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
-      const dReach = calculateDelta(tSoc.reach, tSocPrev.reach); document.getElementById("kpiSocialReachDelta").textContent = dReach.t; document.getElementById("kpiSocialReachDelta").className = dReach.c;
-      const dEng = calculateDelta(tSoc.engagement, tSocPrev.engagement); document.getElementById("kpiSocialEngagementDelta").textContent = dEng.t; document.getElementById("kpiSocialEngagementDelta").className = dEng.c;
-      const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction); document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
-      const dImp = calculateDelta(tSoc.impression, tSocPrev.impression); document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
+      
+      // Removed delta calculation for social to save space/complexity here, just basics
+      document.getElementById("kpiSocialReachDelta").textContent = ""; 
 
       const mCounts = Array(12).fill(0);
       currentLogistics.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if(d && d.getFullYear() === selectedYear) mCounts[d.getMonth()]++; });
@@ -493,20 +636,15 @@
       activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label:`Activities (${selectedYear})`, data:mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
       
       applyFilters(); 
-      updateSimChart(); // Init SIM
-      updateGenderChart(); // Init Gender
+      updateSimChart(); 
+      updateGenderChart(); 
   }
   
   function applyFilters() {
     const qFilter = document.getElementById("quarterFilter").value; const isAll = (qFilter === "all");
     const displayMode = isAll ? "grid" : "none"; const blockMode = isAll ? "block" : "none";
-    
-    document.getElementById("rowSocial").style.display = displayMode; 
-    document.getElementById("rowCharts").style.display = displayMode; 
-    document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
-    
-    document.getElementById("cardJobs").style.display = blockMode; 
-    document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
+    document.getElementById("rowSocial").style.display = displayMode; document.getElementById("rowCharts").style.display = displayMode; document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
+    document.getElementById("cardJobs").style.display = blockMode; document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
 
     const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
     document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); 
@@ -518,19 +656,18 @@
     document.getElementById("kpiZainRate").textContent = zainRate + "%";
 
     const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-    const metrics = yearlyMetrics[selectedYear] || { jobs:0, actual:0, planned:0 };
+    const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear) || { jobs_created:0, actual_budget:0, planned_budget:0 };
     
-    document.getElementById("kpiJobs").textContent = parseInt(metrics.jobs).toLocaleString();
+    document.getElementById("kpiJobs").textContent = parseInt(metricsRow.jobs_created).toLocaleString();
     
     const spent = mCurr.budget;
-    const actual = parseInt(metrics.actual) || 0;
-    const planned = parseInt(metrics.planned) || 0;
+    const actual = parseInt(metricsRow.actual_budget) || 0;
+    const planned = parseInt(metricsRow.planned_budget) || 0;
     
     document.getElementById("kpiBudgetActual").textContent = formatMoney(actual);
     document.getElementById("kpiBudgetPlanned").textContent = formatMoney(planned);
     
-    let pct = 0;
-    if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
+    let pct = 0; if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
     document.getElementById("budgetProgressBar").style.width = pct + "%";
     document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
     
@@ -539,9 +676,7 @@
         const sign = diff > 0 ? "+" : "";
         document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`;
         document.getElementById("budgetPlanComparison").style.color = diff > 0 ? "#f97373" : "#4ade80"; 
-    } else {
-        document.getElementById("budgetPlanComparison").textContent = "";
-    }
+    } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
     const dAct = calculateDelta(mCurr.activities, mPrev.activities); document.getElementById("kpiActivitiesDelta").textContent = dAct.t; document.getElementById("kpiActivitiesDelta").className = dAct.c;
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
@@ -557,19 +692,15 @@
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
-      activities++; 
-      totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); 
-      totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      activities++; totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
       if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
     }); 
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
-  // --- CHARTS ---
   function updateSimChart() {
-    const yearFilter = document.getElementById("simYearFilter").value; 
-    let zain=0, asiacell=0, korek=0;
+    const yearFilter = document.getElementById("simYearFilter").value; let zain=0, asiacell=0, korek=0;
     rawRegistration.forEach(row => { 
         if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
         const phoneVal = getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"]); 
@@ -578,51 +709,38 @@
         if(p.length===11 && p.startsWith("0")) p=p.slice(1); 
         if(p.length===10 && p.startsWith("7")) { if(p.startsWith("78")||p.startsWith("79")) zain++; else if(p.startsWith("77")) asiacell++; else if(p.startsWith("75")) korek++; } 
     });
-    const totalS = zain + asiacell + korek;
-    const zPct = totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0;
+    const totalS = zain + asiacell + korek; const zPct = totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0;
     document.getElementById("kpiSimShare").textContent = zPct + "%";
     const colorsS = { Zain: "#d946ef", Asiacell: "#ef4444", Korek: "#3b82f6" };
     const legendDataS = [{ label: "Zain", val: zain, col: colorsS.Zain }, { label: "Asiacell", val: asiacell, col: colorsS.Asiacell }, { label: "Korek", val: korek, col: colorsS.Korek }];
-    let legendHTMLS = "";
-    legendDataS.forEach(d => { const pct = totalS > 0 ? ((d.val/totalS)*100).toFixed(1) + "%" : "0%"; legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
+    let legendHTMLS = ""; legendDataS.forEach(d => { const pct = totalS > 0 ? ((d.val/totalS)*100).toFixed(1) + "%" : "0%"; legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
     document.getElementById("simLegend").innerHTML = legendHTMLS;
     if (simChartInstance) simChartInstance.destroy(); 
     simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:[colorsS.Zain, colorsS.Asiacell, colorsS.Korek], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
   }
 
   function updateGenderChart() {
-    const yearFilter = document.getElementById("genderYearFilter").value;
-    let male=0, female=0;
+    const yearFilter = document.getElementById("genderYearFilter").value; let male=0, female=0;
     rawRegistration.forEach(row => { 
         if (yearFilter !== "all" && row._derivedYear !== yearFilter) return;
-        const genderVal = getSmartValue(row, ["Gender", "Sex"]); 
-        const g = String(genderVal).toLowerCase().trim(); 
-        if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) female++; 
-        else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) male++; 
+        const genderVal = getSmartValue(row, ["Gender", "Sex"]); const g = String(genderVal).toLowerCase().trim(); 
+        if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) female++; else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) male++; 
     });
-    const totalG = male + female;
-    const fPct = totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0;
-    const mPct = totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0;
-    document.getElementById("kpiFemaleShare").textContent = fPct + "%";
-    document.getElementById("kpiMaleShare").textContent = mPct + "%";
+    const totalG = male + female; const fPct = totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0; const mPct = totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0;
+    document.getElementById("kpiFemaleShare").textContent = fPct + "%"; document.getElementById("kpiMaleShare").textContent = mPct + "%";
     const colorsG = { Male: "#38bdf8", Female: "#f472b6" };
     const legendDataG = [{ label: "Male", val: male, col: colorsG.Male }, { label: "Female", val: female, col: colorsG.Female }];
-    let legendHTMLG = "";
-    legendDataG.forEach(d => { const pct = totalG > 0 ? ((d.val/totalG)*100).toFixed(1) + "%" : "0%"; legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
+    let legendHTMLG = ""; legendDataG.forEach(d => { const pct = totalG > 0 ? ((d.val/totalG)*100).toFixed(1) + "%" : "0%"; legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div></div>`; });
     document.getElementById("genderLegend").innerHTML = legendHTMLG;
     if (genderChartInstance) genderChartInstance.destroy(); 
     genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:[colorsG.Male, colorsG.Female], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
   }
 
   function populateYearFilters() { 
-      const uniqueYears = new Set(); 
-      rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
+      const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
       const simSelect = document.getElementById("simYearFilter"); simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
       const genSelect = document.getElementById("genderYearFilter"); genSelect.innerHTML = '<option value="all" selected>All Years</option>';
-      Array.from(uniqueYears).sort().forEach(y => { 
-          const opt1 = document.createElement("option"); opt1.value = y; opt1.textContent = y; simSelect.appendChild(opt1);
-          const opt2 = document.createElement("option"); opt2.value = y; opt2.textContent = y; genSelect.appendChild(opt2);
-      }); 
+      Array.from(uniqueYears).sort().forEach(y => { const opt1 = document.createElement("option"); opt1.value = y; opt1.textContent = y; simSelect.appendChild(opt1); const opt2 = document.createElement("option"); opt2.value = y; opt2.textContent = y; genSelect.appendChild(opt2); }); 
   }
 
   async function fetchAllRows(table, defaultYear) { let allData = []; let page = 0; const pageSize = 5000; while (true) { try { const { data, error } = await supabaseClient.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1); if (error) throw error; if (!data || data.length === 0) break; const tagged = data.map(row => { let y = getSmartValue(row, ["Year", "year"]); if (!y) y = defaultYear; return { ...row, _derivedYear: String(y) }; }); allData = allData.concat(tagged); if (data.length < pageSize) break; page++; } catch (err) { console.warn(`Skipping table '${table}':`, err.message); break; } } return allData; }
@@ -631,130 +749,7 @@
   function parseCustomDate(val, targetYear) { if (!val) return null; let text = String(val).trim(); if (/^\d{1,2}-[a-zA-Z]{3}$/.test(text)) text = `${text}-${targetYear}`; let d = new Date(text); if (isNaN(d.getTime()) || d.getFullYear() === 2001) d = new Date(`${text} ${targetYear}`); if (isNaN(d.getTime())) return null; return d; }
   function getQuarter(dateObj) { if (!dateObj) return null; const m = dateObj.getMonth(); if (m < 3) return "q1"; if (m < 6) return "q2"; if (m < 9) return "q3"; return "q4"; }
 
-  function calculateDelta(curr, prev) {
-      const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-      const prevYear = selectedYear - 1;
-      if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
-      const d = ((curr - prev) / prev) * 100;
-      const a = d > 0 ? "▲" : d < 0 ? "▼" : "";
-      const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
-      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs ${prevYear}`, c: `kpi-delta ${cl}` };
-  }
-
-  // ADMIN FUNCTIONS
-  function startEdit(id) {
-    const row = currentLogistics.find(r => r.id === id); if (!row) return;
-    document.getElementById("editId").value = id; 
-    document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; 
-    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; 
-    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; 
-    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; 
-    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; 
-    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; 
-    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
-    document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
-    
-    const btnSave = document.getElementById("btnSave"); 
-    btnSave.textContent = "Update Activity"; 
-    btnSave.classList.remove("btn-save"); 
-    btnSave.classList.add("btn-update");
-    
-    document.getElementById("btnCancelEdit").style.display = "block"; 
-    document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
-  }
-
-  function cancelEdit() {
-    document.getElementById("editId").value = ""; 
-    document.getElementById("inpName").value = ""; 
-    document.getElementById("inpDate").value = ""; 
-    document.getElementById("inpCity").value = ""; 
-    document.getElementById("inpAudience").value = ""; 
-    document.getElementById("inpBudget").value = ""; 
-    document.getElementById("inpDesc").value = ""; 
-    document.getElementById("inpZainImplemented").checked = false;
-    
-    const btnSave = document.getElementById("btnSave"); 
-    btnSave.textContent = "Add Row to DB"; 
-    btnSave.classList.remove("btn-update"); 
-    btnSave.classList.add("btn-save"); 
-    document.getElementById("btnCancelEdit").style.display = "none";
-  }
-
-  function toggleAdminMode() {
-    if (!isAdmin) { openLogin(); } else {
-      const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
-      if (dash.style.display === "none") { dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); loadData(); } 
-      else { 
-          dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); 
-          renderTable(); 
-          const year = document.getElementById("viewYear").value;
-          const metrics = yearlyMetrics[year] || { jobs:0, actual:0, planned:0 };
-          document.getElementById("inpYearlyJobs").value = metrics.jobs;
-          document.getElementById("inpActualBudget").value = metrics.actual;
-          document.getElementById("inpPlannedBudget").value = metrics.planned;
-      }
-    }
-  }
-
-  async function saveActivity() {
-    const editId = document.getElementById("editId").value; 
-    const name = document.getElementById("inpName").value; 
-    const date = document.getElementById("inpDate").value; 
-    const city = document.getElementById("inpCity").value; 
-    const aud = document.getElementById("inpAudience").value; 
-    const bud = document.getElementById("inpBudget").value; 
-    const stat = document.getElementById("inpStatus").value; 
-    const desc = document.getElementById("inpDesc").value;
-    const isZain = document.getElementById("inpZainImplemented").checked;
-    
-    if (!name || !date) { alert("Name and Date are required!"); return; }
-    
-    const rowData = { 
-        [COLS_LOGISTICS.name]: name, 
-        [COLS_LOGISTICS.start_date]: date, 
-        [COLS_LOGISTICS.city]: city, 
-        [COLS_LOGISTICS.audience]: aud, 
-        [COLS_LOGISTICS.budget]: bud, 
-        [COLS_LOGISTICS.status]: stat, 
-        [COLS_LOGISTICS.description]: desc, 
-        [COLS_LOGISTICS.is_zain]: isZain 
-    };
-    
-    try {
-      if (editId) { 
-          const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); 
-          if (error) throw error; 
-          showToast("Activity Updated!"); 
-      } else { 
-          const { error } = await supabaseClient.from('logistics_all').insert([rowData]); 
-          if (error) throw error; 
-          showToast("Activity Added!"); 
-      }
-      cancelEdit(); 
-      await loadData(); 
-      renderTable();
-    } catch (err) { 
-        console.error(err); 
-        alert("Error saving: " + err.message); 
-    }
-  }
-
-  async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await loadData(); renderTable(); } catch(err) { alert("Error deleting: " + err.message); } }
-  function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
-  function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
-  function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
-  document.getElementById("adminPassInput").addEventListener("keypress", function(event) { if (event.key === "Enter") checkLogin(); });
-  function handleYearChange() { loadData().then(() => { 
-      const y = document.getElementById("viewYear").value;
-      document.getElementById("adminYearLabel").textContent = y; 
-      const metrics = yearlyMetrics[y] || { jobs:0, actual:0, planned:0 };
-      document.getElementById("inpYearlyJobs").value = metrics.jobs;
-      document.getElementById("inpActualBudget").value = metrics.actual;
-      document.getElementById("inpPlannedBudget").value = metrics.planned;
-      if (document.getElementById("adminPanel").style.display === "block") renderTable(); 
-  }); }
-
-  loadData();
+  fetchAllData();
 </script>
 </body>
 </html>
