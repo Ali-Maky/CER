@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Full Screen)</title>
+  <title>CER Impact Dashboard (Merged SIM Card)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,13 +14,7 @@
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; overflow-x: hidden; }
     
-    /* LAYOUT FIX: WIDER CONTAINER */
-    .page { 
-      width: 95%; 
-      max-width: 1800px; /* Allowed to go much wider now */
-      margin: 0 auto; /* Keeps it strictly centered */
-      padding: 24px 16px 40px; 
-    }
+    .page { width: 95%; max-width: 1800px; margin: 0 auto; padding: 24px 16px 40px; }
     
     .top-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
     .brand-area { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -42,9 +36,10 @@
 
     .grid { display: grid; gap: 16px; }
     .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } /* NEW for top row */
     .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    @media (max-width: 1100px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 700px) { .grid-4, .grid-2 { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 1100px) { .grid-4, .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) { .grid-4, .grid-3, .grid-2 { grid-template-columns: minmax(0, 1fr); } }
 
     .card { background: linear-gradient(145deg, var(--bg-card) 0, var(--bg-card-soft) 100%); border-radius: 20px; padding: 16px 18px; border: 1px solid var(--border-subtle); box-shadow: 0 18px 40px rgba(0,0,0,0.45); transition: 0.3s; }
     .card-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
@@ -59,13 +54,43 @@
     .delta-down { color: var(--danger); }
     .delta-neutral { color: var(--text-muted); }
     .kpi-note { font-size: 11px; color: var(--text-soft); line-height: 1.4; }
-    .sim-big-line { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    
     .chart-wrapper { position: relative; width: 100%; height: 270px; }
     .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; gap: 8px; }
     .chart-title { font-size: 13px; font-weight: 500; }
     .error-text { font-size: 12px; color: var(--danger); margin-bottom: 12px; white-space: pre-wrap; }
 
-    /* --- ADMIN VIEW --- */
+    /* --- NEW SIM CARD STYLES --- */
+    .sim-card-body {
+        display: flex; align-items: center; justify-content: space-between; gap: 20px; height: 270px;
+    }
+    .sim-kpi-section {
+        flex: 0 0 auto; text-align: center;
+    }
+    .sim-big-number { font-size: 48px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .sim-label { font-size: 13px; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 1px; }
+    
+    .sim-chart-container {
+        flex: 1; height: 100%; position: relative;
+    }
+    
+    .sim-legend {
+        flex: 0 0 140px; display: flex; flex-direction: column; justify-content: center; gap: 12px;
+    }
+    .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+    .legend-left { display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+    .legend-right { text-align: right; }
+    .legend-pct { display: block; font-weight: 700; color: #fff; }
+    .legend-count { display: block; font-size: 10px; color: var(--text-soft); }
+    
+    /* Card Filter */
+    .card-filter {
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text-muted);
+    }
+
+    /* --- ADMIN VIEW STYLES --- */
     #adminPanel { display: none; }
     .admin-controls { background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border-subtle); margin-bottom: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
     .full-width { grid-column: span 4; }
@@ -135,16 +160,14 @@
 
     <div id="dashboardView">
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:16px;">
-         <div class="pill">Participants: <select id="simYearFilter" onchange="updateSimCharts()"><option value="all">All Years</option></select></div>
          <div class="pill">Quarter: <select id="quarterFilter" onchange="applyFilters()"><option value="all">All Year</option><option value="q1">Q1</option><option value="q2">Q2</option><option value="q3">Q3</option><option value="q4">Q4</option></select></div>
       </div>
 
-      <div class="grid grid-4" style="margin-bottom: 20px;">
+      <div class="grid grid-3" style="margin-bottom: 20px;">
         <div class="card"><div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div><div id="kpiActivities" class="kpi-value">...</div><div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div></div>
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
         <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
-        <div id="cardSims" class="card"><div class="card-header-row"><div class="card-label">SIM Distribution</div><div class="badge-soft red"><span class="badge-soft-dot"></span><span>Share</span></div></div><div class="sim-big-line"><span id="kpiSimShare">...</span><span style="font-size: 16px; margin-left: 4px;">Zain</span></div></div>
-      </div>
+        </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
         <div id="cardBudget" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Budget Spent</div></div><div id="kpiBudget" class="kpi-value">...</div><div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div></div>
@@ -160,8 +183,28 @@
 
       <div id="rowCharts" class="grid grid-2">
         <div class="card"><div class="chart-header"><div><div class="chart-title">Activities per Month</div></div></div><div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div></div>
-        <div class="card"><div class="chart-header"><div><div class="chart-title">SIM Distribution</div></div></div><div class="chart-wrapper"><canvas id="simChart"></canvas></div></div>
+        
+        <div class="card">
+            <div class="card-header-row">
+                <div class="chart-title">SIM Distribution</div>
+                <select id="simYearFilter" onchange="updateSimCharts()" class="card-filter">
+                    <option value="all">All Years</option>
+                </select>
+            </div>
+            <div class="sim-card-body">
+                <div class="sim-kpi-section">
+                    <div id="kpiSimShare" class="sim-big-number">0%</div>
+                    <div class="sim-label">Zain Share</div>
+                </div>
+                <div class="sim-chart-container">
+                    <canvas id="simChart"></canvas>
+                </div>
+                <div id="simLegend" class="sim-legend">
+                    </div>
+            </div>
+        </div>
       </div>
+
       <div id="rowCharts2" class="grid" style="margin-top: 16px;">
         <div class="card"><div class="chart-header"><div><div class="chart-title">Gender Distribution</div></div></div><div class="chart-wrapper"><canvas id="genderChart"></canvas></div></div>
       </div>
@@ -177,14 +220,8 @@
         <div style="flex:1; color:#7dd3fc; font-size:13px; display:flex; align-items:center; gap:6px;">
             <span class="material-icons">description</span> <strong>Generate Excel Report</strong>
         </div>
-        <div class="form-group" style="width:auto;">
-            <label class="form-label">Start Date</label>
-            <input type="date" id="reportStart" class="form-input">
-        </div>
-        <div class="form-group" style="width:auto;">
-            <label class="form-label">End Date</label>
-            <input type="date" id="reportEnd" class="form-input">
-        </div>
+        <div class="form-group" style="width:auto;"><label class="form-label">Start Date</label><input type="date" id="reportStart" class="form-input"></div>
+        <div class="form-group" style="width:auto;"><label class="form-label">End Date</label><input type="date" id="reportEnd" class="form-input"></div>
         <button class="btn-download" onclick="downloadReport()">Download .CSV</button>
       </div>
       
@@ -244,13 +281,11 @@
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
-  // --- CALCULATE DELTA HELPER (Dynamic Year Label) ---
+  // --- HELPERS ---
   function calculateDelta(curr, prev) {
       const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
       const prevYear = selectedYear - 1;
-      
       if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
-      
       const d = ((curr - prev) / prev) * 100;
       const a = d > 0 ? "▲" : d < 0 ? "▼" : "";
       const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
@@ -259,16 +294,10 @@
 
   // --- REPORT GENERATOR ---
   function downloadReport() {
-      const startStr = document.getElementById("reportStart").value;
-      const endStr = document.getElementById("reportEnd").value;
+      const startStr = document.getElementById("reportStart").value; const endStr = document.getElementById("reportEnd").value;
       if (!startStr || !endStr) { alert("Please select both Start and End dates."); return; }
-      const start = new Date(startStr);
-      const end = new Date(endStr);
-      end.setHours(23,59,59); 
-      const filtered = currentLogistics.filter(row => {
-          const d = new Date(row[COLS_LOGISTICS.start_date]);
-          return d >= start && d <= end;
-      });
+      const start = new Date(startStr); const end = new Date(endStr); end.setHours(23,59,59); 
+      const filtered = currentLogistics.filter(row => { const d = new Date(row[COLS_LOGISTICS.start_date]); return d >= start && d <= end; });
       if (filtered.length === 0) { alert("No activities found in this date range."); return; }
       let csv = "Date,Activity Name,City,Audience,Budget,Status,Description\n";
       filtered.forEach(row => {
@@ -276,18 +305,12 @@
           const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
           csv += line + "\n";
       });
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
+      const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
   }
 
   // --- AI WRITER ---
   function autoGenerateDesc() {
-    const name = document.getElementById("inpName").value;
-    const city = document.getElementById("inpCity").value;
-    const date = document.getElementById("inpDate").value;
-    const aud = document.getElementById("inpAudience").value;
-    const stat = document.getElementById("inpStatus").value;
+    const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const date = document.getElementById("inpDate").value; const aud = document.getElementById("inpAudience").value; const stat = document.getElementById("inpStatus").value;
     if (!name || !city || !date) { alert("Please fill in Name, City, and Date first!"); return; }
     const templates = [
         `The ${name} was successfully ${stat.toLowerCase()} in ${city} on ${date}. This initiative engaged ${aud || 'various'} participants, focusing on innovation and skill development within the community.`,
@@ -297,30 +320,17 @@
     document.getElementById("inpDesc").value = templates[Math.floor(Math.random() * templates.length)];
   }
 
-  // --- EDITING LOGIC ---
+  // --- EDITING & ADMIN ---
   function startEdit(id) {
-    const row = currentLogistics.find(r => r.id === id);
-    if (!row) return;
-    document.getElementById("editId").value = id;
-    document.getElementById("inpName").value = row[COLS_LOGISTICS.name];
-    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date];
-    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city];
-    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed";
-    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience];
-    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget];
-    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    const row = currentLogistics.find(r => r.id === id); if (!row) return;
+    document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
-    document.getElementById("btnCancelEdit").style.display = "block";
-    document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
+    document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
   function cancelEdit() {
-    document.getElementById("editId").value = "";
-    document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = "";
-    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save");
-    document.getElementById("btnCancelEdit").style.display = "none";
+    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = "";
+    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
   }
-
-  // --- ADMIN VIEW ---
   function toggleAdminMode() {
     if (!isAdmin) { openLogin(); } else {
       const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
@@ -328,20 +338,16 @@
       else { dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); renderTable(); }
     }
   }
-
   function renderTable() {
     const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
-      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`;
-      tbody.appendChild(tr);
+      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
     });
   }
-
   async function saveActivity() {
-    const editId = document.getElementById("editId").value;
-    const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
+    const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
     if (!name || !date) { alert("Name and Date are required!"); return; }
     const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc };
     try {
@@ -350,17 +356,14 @@
       cancelEdit(); await loadData(); renderTable();
     } catch (err) { console.error(err); alert("Error saving: " + err.message); }
   }
-
   async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await loadData(); renderTable(); } catch(err) { alert("Error deleting: " + err.message); } }
-
-  // --- LOGIN ---
   function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
   function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
   function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
   document.getElementById("adminPassInput").addEventListener("keypress", function(event) { if (event.key === "Enter") checkLogin(); });
   function handleYearChange() { loadData().then(() => { document.getElementById("adminYearLabel").textContent = document.getElementById("viewYear").value; if (document.getElementById("adminPanel").style.display === "block") renderTable(); }); }
 
-  // --- LOAD DATA ---
+  // --- DATA & RENDER ---
   async function loadData() {
     try {
       const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
@@ -385,7 +388,6 @@
     } catch (err) { document.getElementById("globalError").textContent = "Error: " + err.message; console.error(err); }
   }
 
-  // --- RENDER ---
   function renderKPIsAndCharts(selectedYear) {
       const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
@@ -399,27 +401,12 @@
            tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
         }
       });
-      
-      // Update Values
-      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); 
-      document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
-      document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
-      document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+      const dReach = calculateDelta(tSoc.reach, tSocPrev.reach); document.getElementById("kpiSocialReachDelta").textContent = dReach.t; document.getElementById("kpiSocialReachDelta").className = dReach.c;
+      const dEng = calculateDelta(tSoc.engagement, tSocPrev.engagement); document.getElementById("kpiSocialEngagementDelta").textContent = dEng.t; document.getElementById("kpiSocialEngagementDelta").className = dEng.c;
+      const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction); document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
+      const dImp = calculateDelta(tSoc.impression, tSocPrev.impression); document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
 
-      // Update Deltas
-      const dReach = calculateDelta(tSoc.reach, tSocPrev.reach);
-      document.getElementById("kpiSocialReachDelta").textContent = dReach.t; document.getElementById("kpiSocialReachDelta").className = dReach.c;
-      
-      const dEng = calculateDelta(tSoc.engagement, tSocPrev.engagement);
-      document.getElementById("kpiSocialEngagementDelta").textContent = dEng.t; document.getElementById("kpiSocialEngagementDelta").className = dEng.c;
-
-      const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction);
-      document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
-
-      const dImp = calculateDelta(tSoc.impression, tSocPrev.impression);
-      document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
-
-      // Charts
       const mCounts = Array(12).fill(0);
       currentLogistics.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if(d && d.getFullYear() === selectedYear) mCounts[d.getMonth()]++; });
       if (activitiesChartInstance) activitiesChartInstance.destroy();
@@ -436,10 +423,7 @@
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
     const dBud = calculateDelta(mCurr.budget, mPrev.budget); document.getElementById("kpiBudgetDelta").textContent = dBud.t; document.getElementById("kpiBudgetDelta").className = dBud.c;
     const dCit = calculateDelta(mCurr.cities, mPrev.cities); document.getElementById("kpiCitiesDelta").textContent = dCit.t; document.getElementById("kpiCitiesDelta").className = dCit.c;
-    
-    // Update label specifically for the audience badge
-    const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-    document.getElementById("audienceDeltaBadgeText").textContent = "vs " + (selectedYear - 1);
+    const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025; document.getElementById("audienceDeltaBadgeText").textContent = "vs " + (selectedYear - 1);
   }
   function computeMetrics(data, quarterFilter) {
     let activities = 0, totalAudience = 0, totalBudget = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
@@ -454,8 +438,33 @@
   function updateSimCharts() {
     const yearFilter = document.getElementById("simYearFilter").value; let zain=0, asiacell=0, korek=0, totalSim=0, male=0, female=0;
     rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const phoneVal = getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"]); let p = String(phoneVal).replace(/\D/g,""); if(p.startsWith("00964")) p=p.slice(5); else if(p.startsWith("964")) p=p.slice(3); if(p.length===11 && p.startsWith("0")) p=p.slice(1); if(p.length===10 && p.startsWith("7")) { totalSim++; if(p.startsWith("78")||p.startsWith("79")) zain++; else if(p.startsWith("77")) asiacell++; else if(p.startsWith("75")) korek++; } const genderVal = getSmartValue(row, ["Gender", "Sex"]); const g = String(genderVal).toLowerCase().trim(); if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) female++; else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) male++; });
-    document.getElementById("kpiSimShare").textContent = totalSim > 0 ? ((zain/totalSim)*100).toFixed(1) + "%" : "0%";
-    if (simChartInstance) simChartInstance.destroy(); simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:["#d946ef","#ef4444","#3b82f6"], borderWidth:0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { labels: { color:"#ccc"} } } } });
+    
+    // UPDATE NEW CARD UI
+    const total = zain + asiacell + korek;
+    const zPct = total > 0 ? ((zain/total)*100).toFixed(1) : 0;
+    document.getElementById("kpiSimShare").textContent = zPct + "%";
+    
+    // Generate Custom Legend HTML
+    const colors = { Zain: "#d946ef", Asiacell: "#ef4444", Korek: "#3b82f6" };
+    const legendData = [
+       { label: "Zain", val: zain, col: colors.Zain },
+       { label: "Asiacell", val: asiacell, col: colors.Asiacell },
+       { label: "Korek", val: korek, col: colors.Korek }
+    ];
+    let legendHTML = "";
+    legendData.forEach(d => {
+       const pct = total > 0 ? ((d.val/total)*100).toFixed(1) + "%" : "0%";
+       legendHTML += `
+         <div class="legend-item">
+            <div class="legend-left"><span class="legend-dot" style="background:${d.col}"></span> ${d.label}</div>
+            <div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.val.toLocaleString()}</span></div>
+         </div>
+       `;
+    });
+    document.getElementById("simLegend").innerHTML = legendHTML;
+
+    // Update Chart
+    if (simChartInstance) simChartInstance.destroy(); simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:[colors.Zain, colors.Asiacell, colors.Korek], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } } } });
     if (genderChartInstance) genderChartInstance.destroy(); genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:["#38bdf8","#f472b6"], borderWidth:0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { labels: { color:"#ccc"} } } } });
   }
   function populateSimYearFilter() { const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); const yearSelect = document.getElementById("simYearFilter"); yearSelect.innerHTML = '<option value="all" selected>All Years</option>'; Array.from(uniqueYears).sort().forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = y; yearSelect.appendChild(opt); }); }
