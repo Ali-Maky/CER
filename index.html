@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Trends & Comparisons)</title>
+  <title>CER Impact Dashboard (Final with Trends)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -286,7 +286,7 @@
             <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div>
             <div id="kpiActivities" class="kpi-value">...</div>
             <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
-            <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Implemented By Zain</div>
+            <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Zain Led</div>
         </div>
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
         <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Cities Covered</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
@@ -304,11 +304,11 @@
                 <div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div>
             </div>
             <div class="budget-grid">
-                <div><div class="budget-sub-label">Actual Budget</div><div id="kpiBudgetActual" class="budget-sub-value">...</div></div>
+                <div><div class="budget-sub-label">Actual Approved Budget</div><div id="kpiBudgetActual" class="budget-sub-value">...</div></div>
                 <div><div class="budget-sub-label">Planned Budget</div><div id="kpiBudgetPlanned" class="budget-sub-value">...</div></div>
             </div>
             <div class="budget-progress-bg"><div id="budgetProgressBar" class="budget-progress-fill"></div></div>
-            <div class="budget-progress-text"><span id="budgetProgressText">0% Spent from Actual</span><span id="budgetPlanComparison">...</span></div>
+            <div class="budget-progress-text"><span id="budgetProgressText">0% of Actual</span><span id="budgetPlanComparison">...</span></div>
         </div>
 
         <div id="cardJobs" class="card" style="grid-column: span 2;">
@@ -334,7 +334,7 @@
             <div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div>
         </div>
         <div class="card">
-            <div class="card-header-row"><div class="chart-title">SIM Distribution</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
+            <div class="card-header-row"><div class="chart-title">SIM Shareholders</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
             <div class="donut-card-body">
                 <div class="donut-kpi-section"><div id="kpiSimShare" class="donut-big-number">0%</div><div class="donut-label">Zain Share</div></div>
                 <div class="donut-chart-container"><canvas id="simChart"></canvas></div><div id="simLegend" class="donut-legend"></div>
@@ -344,7 +344,7 @@
 
       <div id="rowCharts2" class="grid" style="margin-top: 16px;">
         <div class="card">
-            <div class="card-header-row"><div class="chart-title">Gender Distribution</div><select id="genderYearFilter" onchange="updateGenderChart()" class="card-filter"><option value="all">All Years</option></select></div>
+            <div class="card-header-row"><div class="card-title">Gender Distribution</div><select id="genderYearFilter" onchange="updateGenderChart()" class="card-filter"><option value="all">All Years</option></select></div>
             <div class="donut-card-body">
                 <div class="donut-kpi-section">
                     <div><div id="kpiMaleShare" class="donut-big-number" style="color:#38bdf8; font-size:32px;">0%</div><div class="donut-label">Male</div></div>
@@ -355,12 +355,18 @@
         </div>
       </div>
       
-      <div class="grid" style="margin-top:16px;">
+      <div class="grid grid-2" style="margin-top:16px;">
           <div class="card">
               <div class="chart-header">
                   <div><div class="chart-title">Female Participation Trend</div></div>
               </div>
               <div class="chart-wrapper"><canvas id="genderLineChart"></canvas></div>
+          </div>
+          <div class="card">
+              <div class="chart-header">
+                  <div><div class="chart-title">Activity Growth (Yearly)</div></div>
+              </div>
+              <div class="chart-wrapper"><canvas id="activitiesTrendChart"></canvas></div>
           </div>
       </div>
     </div>
@@ -391,17 +397,17 @@
   const IQD_RATE = 1320;
 
   let isAdmin = false; 
+  let allLogistics = []; 
   let currentLogistics = []; 
-  let comparisonLogistics = []; // Previous Year Data
-  let allLogistics = []; // For Activity Chart
+  let yearlyMetricsArray = []; 
+  let comparisonLogistics = [];
   let rawSocial = [];
   let rawRegistration = [];
-  let yearlyMetrics = {}; 
-  let yearlyMetricsArray = [];
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
   let genderLineChartInstance = null;
+  let activitiesTrendChartInstance = null;
 
   function showToast(msg) {
       const x = document.getElementById("toast");
@@ -573,6 +579,7 @@
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
+      // SOCIAL DELTAS
       rawSocial.forEach(row => { 
         const y = String(row[COLS_SOCIAL.year]).trim();
         if (y == selectedYear) { 
@@ -602,6 +609,7 @@
       updateSimChart(); 
       updateGenderChart();
       renderGenderLineChart();
+      renderActivitiesTrendChart();
   }
   
   function applyFilters() {
@@ -633,12 +641,12 @@
     
     let pct = 0; if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
     document.getElementById("budgetProgressBar").style.width = pct + "%";
-    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% Spent from Actual";
+    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% Actual Spent from Actual Approved";
     
     if(planned > 0) {
         const diff = ((actual - planned) / planned) * 100;
         const sign = diff > 0 ? "+" : "";
-        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% Actual vs Plan`;
+        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% Actual Approved vs Planned`;
         document.getElementById("budgetPlanComparison").style.color = diff > 0 ? "#f97373" : "#4ade80"; 
     } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
@@ -646,7 +654,7 @@
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
     const dBud = calculateDelta(mCurr.budget, mPrev.budget); document.getElementById("kpiBudgetDelta").textContent = dBud.t; document.getElementById("kpiBudgetDelta").className = dBud.c;
     const dCit = calculateDelta(mCurr.cities, mPrev.cities); document.getElementById("kpiCitiesDelta").textContent = dCit.t; document.getElementById("kpiCitiesDelta").className = dCit.c;
-    document.getElementById("audienceDeltaBadgeText").textContent = "vs " + (selectedYear - 1);
+    document.getElementById("audienceDeltaBadgeText").textContent = "vs Prev";
   }
   
   function computeMetrics(data, quarterFilter) {
@@ -657,17 +665,11 @@
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
       
-      // ONLINE FILTER CHECK
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase();
       const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom");
 
       activities++; 
-      
-      // ONLY ADD AUDIENCE IF NOT ONLINE
-      if(!isOnline) {
-          totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
-      }
-      
+      if(!isOnline) totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
       totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
       if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
       
@@ -744,6 +746,41 @@
       });
   }
 
+  function renderActivitiesTrendChart() {
+      const yearCounts = {};
+      allLogistics.forEach(row => {
+          const y = row.Year;
+          if(y) yearCounts[y] = (yearCounts[y] || 0) + 1;
+      });
+      const years = Object.keys(yearCounts).sort();
+      const counts = years.map(y => yearCounts[y]);
+
+      if (activitiesTrendChartInstance) activitiesTrendChartInstance.destroy();
+      activitiesTrendChartInstance = new Chart(document.getElementById("activitiesTrendChart"), {
+          type: 'line',
+          data: {
+              labels: years,
+              datasets: [{
+                  label: 'Total Activities',
+                  data: counts,
+                  borderColor: '#d946ef',
+                  backgroundColor: 'rgba(217, 70, 239, 0.1)',
+                  tension: 0.4,
+                  fill: true
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                  y: { beginAtZero: true, grid: { color: '#333' } },
+                  x: { grid: { display: false } }
+              }
+          }
+      });
+  }
+
   function populateYearFilters() { 
       const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
       const simSelect = document.getElementById("simYearFilter"); simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
@@ -761,4 +798,3 @@
 </script>
 </body>
 </html>
-
