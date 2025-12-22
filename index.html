@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Final Polish)</title>
+  <title>CER Impact Dashboard (Dynamic Jobs)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,7 +13,6 @@
     :root { --bg-main: #040011; --bg-card: #0c071d; --bg-card-soft: #120a2a; --border-subtle: #231a3c; --accent: #d946ef; --accent-soft: #9333ea; --text-main: #f9fafb; --text-muted: #9ca3af; --text-soft: #6b7280; --success: #4ade80; --warning: #facc15; --danger: #f97373; --chip-bg: rgba(255,255,255,0.06); }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; overflow-x: hidden; }
-    
     .page { width: 95%; max-width: 1800px; margin: 0 auto; padding: 24px 16px 40px; }
     
     .top-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
@@ -60,52 +59,19 @@
     .chart-title { font-size: 13px; font-weight: 500; }
     .error-text { font-size: 12px; color: var(--danger); margin-bottom: 12px; white-space: pre-wrap; }
 
-    /* --- DONUT CARD STYLES --- */
-    .donut-card-body {
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between; 
-        gap: 16px; 
-        height: 270px;
-        overflow: hidden; 
-    }
-    
-    /* LEFT: Big Number Section */
-    .donut-kpi-section {
-        flex: 0 0 auto; 
-        text-align: center;
-        min-width: 80px;
-        display: flex;
-        flex-direction: column;
-        gap: 20px; /* Space between Male and Female blocks */
-        justify-content: center;
-    }
+    /* DONUT CARD STYLES */
+    .donut-card-body { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 270px; overflow: hidden; }
+    .donut-kpi-section { flex: 0 0 auto; text-align: center; min-width: 80px; display: flex; flex-direction: column; gap: 20px; justify-content: center; }
     .donut-big-number { font-size: 40px; font-weight: 800; color: var(--accent); line-height: 1; }
     .donut-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
-    
-    /* MIDDLE: Chart */
-    .donut-chart-container {
-        flex: 1; 
-        height: 100%; 
-        position: relative;
-        min-width: 0; 
-    }
-    
-    /* RIGHT: Legend */
-    .donut-legend {
-        flex: 0 0 160px; 
-        display: flex; 
-        flex-direction: column; 
-        justify-content: center; 
-        gap: 12px;
-    }
+    .donut-chart-container { flex: 1; height: 100%; position: relative; min-width: 0; }
+    .donut-legend { flex: 0 0 160px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
     .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; gap: 10px; }
     .legend-left { display: flex; align-items: center; gap: 8px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
     .legend-right { text-align: right; min-width: 60px; }
     .legend-pct { display: block; font-weight: 700; color: #fff; }
     .legend-count { display: block; font-size: 10px; color: var(--text-soft); }
-    
     .card-filter { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 2px 8px; font-size: 11px; color: var(--text-muted); }
 
     /* ADMIN */
@@ -189,7 +155,11 @@
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
         <div id="cardBudget" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Budget Spent</div></div><div id="kpiBudget" class="kpi-value">...</div><div id="kpiBudgetDelta" class="kpi-delta delta-neutral"></div></div>
-        <div id="cardJobs" class="card" style="grid-column: span 2;"><div class="card-header-row"><div class="card-label">Jobs Created</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Impact</span></div></div><div class="kpi-value">220</div><div class="kpi-note">Annual Estimate</div></div>
+        <div id="cardJobs" class="card" style="grid-column: span 2;">
+            <div class="card-header-row"><div class="card-label">Jobs Created</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Impact</span></div></div>
+            <div id="kpiJobs" class="kpi-value">...</div>
+            <div class="kpi-note">Sum of created opportunities.</div>
+        </div>
       </div>
       
       <div id="rowSocial" class="grid grid-4" style="margin-bottom: 20px;">
@@ -235,7 +205,6 @@
                         <div class="donut-label">Female</div>
                     </div>
                 </div>
-                
                 <div class="donut-chart-container"><canvas id="genderChart"></canvas></div>
                 <div id="genderLegend" class="donut-legend"></div>
             </div>
@@ -264,8 +233,11 @@
         <div class="form-group"><label class="form-label">Date</label><input type="date" id="inpDate" class="form-input"></div>
         <div class="form-group"><label class="form-label">City</label><input type="text" id="inpCity" class="form-input" placeholder="City"></div>
         <div class="form-group"><label class="form-label">Status</label><select id="inpStatus" class="form-input"><option value="Completed">Completed</option><option value="Planned">Planned</option></select></div>
+        
         <div class="form-group"><label class="form-label">Audience</label><input type="number" id="inpAudience" class="form-input" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Budget</label><input type="number" id="inpBudget" class="form-input" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Jobs Created</label><input type="number" id="inpJobs" class="form-input" placeholder="0"></div>
+        
         <div class="form-group full-width">
           <button class="btn-ai" onclick="autoGenerateDesc()">✨ Auto-Generate</button>
           <label class="form-label">Description (Optional)</label>
@@ -277,7 +249,7 @@
 
       <div class="data-table-wrapper">
         <table id="dataTable">
-          <thead><tr><th>Date</th><th>Activity Name</th><th>City</th><th>Audience</th><th>Description</th><th style="width:70px;">Actions</th></tr></thead>
+          <thead><tr><th>Date</th><th>Activity Name</th><th>City</th><th>Audience</th><th>Jobs</th><th>Description</th><th style="width:70px;">Actions</th></tr></thead>
           <tbody id="tableBody"></tbody>
         </table>
       </div>
@@ -302,7 +274,8 @@
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';  
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description" };
+  // Added 'jobs' to config
+  const COLS_LOGISTICS = { name: "Activity Name", start_date: "Start Date", city: "City", audience: "Total Audience", budget: "Total Budget", status: "Status", year: "Year", description: "Description", jobs: "Jobs Created" };
   const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
 
   let isAdmin = false; 
@@ -332,10 +305,10 @@
       const start = new Date(startStr); const end = new Date(endStr); end.setHours(23,59,59); 
       const filtered = currentLogistics.filter(row => { const d = new Date(row[COLS_LOGISTICS.start_date]); return d >= start && d <= end; });
       if (filtered.length === 0) { alert("No activities found in this date range."); return; }
-      let csv = "Date,Activity Name,City,Audience,Budget,Status,Description\n";
+      let csv = "Date,Activity Name,City,Audience,Jobs Created,Budget,Status,Description\n";
       filtered.forEach(row => {
           const cleanDesc = (row[COLS_LOGISTICS.description] || "").replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
+          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.jobs] || 0}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
           csv += line + "\n";
       });
       const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
@@ -356,12 +329,25 @@
   // --- EDITING & ADMIN ---
   function startEdit(id) {
     const row = currentLogistics.find(r => r.id === id); if (!row) return;
-    document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    document.getElementById("editId").value = id; 
+    document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; 
+    document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; 
+    document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; 
+    document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; 
+    document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; 
+    document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; 
+    document.getElementById("inpJobs").value = row[COLS_LOGISTICS.jobs]; // Load Jobs
+    document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || "";
+    
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
     document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
   function cancelEdit() {
-    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = "";
+    document.getElementById("editId").value = ""; 
+    document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; 
+    document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpJobs").value = ""; 
+    document.getElementById("inpDesc").value = "";
+    
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
   }
   function toggleAdminMode() {
@@ -376,13 +362,35 @@
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
-      tr.innerHTML = `<td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
+      tr.innerHTML = `
+        <td>${row[COLS_LOGISTICS.start_date]}</td>
+        <td><strong>${row[COLS_LOGISTICS.name]}</strong></td>
+        <td>${row[COLS_LOGISTICS.city]}</td>
+        <td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td>
+        <td>${Number(row[COLS_LOGISTICS.jobs] || 0)}</td>
+        <td class="desc-cell">${desc}</td>
+        <td style="text-align:center; white-space:nowrap;">
+            <button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button>
+            <button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button>
+        </td>`; 
+      tbody.appendChild(tr);
     });
   }
   async function saveActivity() {
-    const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
+    const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const jobs = document.getElementById("inpJobs").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
     if (!name || !date) { alert("Name and Date are required!"); return; }
-    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc };
+    
+    const rowData = { 
+        [COLS_LOGISTICS.name]: name, 
+        [COLS_LOGISTICS.start_date]: date, 
+        [COLS_LOGISTICS.city]: city, 
+        [COLS_LOGISTICS.audience]: aud, 
+        [COLS_LOGISTICS.budget]: bud, 
+        [COLS_LOGISTICS.jobs]: jobs,
+        [COLS_LOGISTICS.status]: stat, 
+        [COLS_LOGISTICS.description]: desc 
+    };
+    
     try {
       if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; alert("Updated successfully!"); } 
       else { const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; alert("Added successfully!"); }
@@ -445,6 +453,7 @@
       currentLogistics.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if(d && d.getFullYear() === selectedYear) mCounts[d.getMonth()]++; });
       if (activitiesChartInstance) activitiesChartInstance.destroy();
       activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label:`Activities (${selectedYear})`, data:mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
+      
       applyFilters(); 
       updateSimChart(); // Init SIM
       updateGenderChart(); // Init Gender
@@ -461,8 +470,15 @@
     document.getElementById("cardJobs").style.display = blockMode; 
     document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
 
-    const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
-    document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); document.getElementById("kpiBudget").textContent = mCurr.budget.toLocaleString(); document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
+    const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, jobs:0, cities:0 };
+    document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); 
+    document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); 
+    document.getElementById("kpiBudget").textContent = mCurr.budget.toLocaleString(); 
+    document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
+    
+    // Updated Jobs Display
+    document.getElementById("kpiJobs").textContent = mCurr.jobs.toLocaleString();
+
     const dAct = calculateDelta(mCurr.activities, mPrev.activities); document.getElementById("kpiActivitiesDelta").textContent = dAct.t; document.getElementById("kpiActivitiesDelta").className = dAct.c;
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
     const dBud = calculateDelta(mCurr.budget, mPrev.budget); document.getElementById("kpiBudgetDelta").textContent = dBud.t; document.getElementById("kpiBudgetDelta").className = dBud.c;
@@ -471,14 +487,19 @@
   }
   
   function computeMetrics(data, quarterFilter) {
-    let activities = 0, totalAudience = 0, totalBudget = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+    let activities = 0, totalAudience = 0, totalBudget = 0, totalJobs = 0; 
+    const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
     data.forEach(row => {
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
-      activities++; totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      activities++; 
+      totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); 
+      totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      totalJobs += toNumberSmart(row[COLS_LOGISTICS.jobs]); // Sum Jobs
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
-    }); return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size };
+    }); 
+    return { activities, audience: totalAudience, budget: totalBudget, jobs: totalJobs, cities: citySet.size };
   }
 
   // --- SPLIT CHARTS: SIM ---
@@ -548,11 +569,9 @@
       const uniqueYears = new Set(); 
       rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
       
-      // Populate SIM Filter
       const simSelect = document.getElementById("simYearFilter"); 
       simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
       
-      // Populate Gender Filter
       const genSelect = document.getElementById("genderYearFilter");
       genSelect.innerHTML = '<option value="all" selected>All Years</option>';
 
