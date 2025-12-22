@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CER Impact Dashboard (Social Comparison)</title>
+  <title>CER Impact Dashboard (Historical & Admin)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -46,7 +46,6 @@
     .badge-soft-dot { width: 6px; height: 6px; border-radius: 999px; background: #22c55e; }
     .badge-soft.red { background: rgba(248,113,113,0.08); color: #fecaca; border-color: rgba(248,113,113,0.4); }
     .badge-soft.red .badge-soft-dot { background: #f87171; }
-    
     .kpi-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
     .kpi-delta { font-size: 11px; margin-bottom: 6px; }
     .delta-up { color: var(--success); }
@@ -106,20 +105,23 @@
         </button>
       </div>
       <div class="top-controls">
-        
-   <div class="pill">
-  Select Year:
-  <select id="viewYear" onchange="handleYearChange()">
-    <option value="2026">2026</option>
-    <option value="2025" selected>2025</option>
-    <option value="2024">2024</option>
-    <option value="2023">2023</option>
-    <option value="2022">2022</option>
-    <option value="2021">2021</option>
-    <option value="2020">2020</option>
-    <option value="2019">2019</option>
-  </select>
-</div>
+        <div class="pill">
+          Logistics Year:
+          <select id="viewYear" onchange="handleYearChange()">
+            <option value="2026">2026</option>
+            <option value="2025" selected>2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+            <option value="2019">2019</option>
+          </select>
+        </div>
+        <div class="update-text">Status: <span class="update-bold">Live</span></div>
+      </div>
+    </div>
+
     <h1>CER Impact Dashboard</h1>
     <div class="subtitle">Live view of <span id="titleYear">2025</span> activities.</div>
     <div id="globalError" class="error-text"></div>
@@ -143,26 +145,10 @@
       </div>
       
       <div id="rowSocial" class="grid grid-4" style="margin-bottom: 20px;">
-        <div class="card">
-            <div class="card-header-row"><div class="card-label">Social Reach</div></div>
-            <div id="kpiSocialReach" class="kpi-value">...</div>
-            <div id="kpiSocialReachDelta" class="kpi-delta delta-neutral"></div>
-        </div>
-        <div class="card">
-            <div class="card-header-row"><div class="card-label">Social Engagement</div></div>
-            <div id="kpiSocialEngagement" class="kpi-value">...</div>
-            <div id="kpiSocialEngagementDelta" class="kpi-delta delta-neutral"></div>
-        </div>
-        <div class="card">
-            <div class="card-header-row"><div class="card-label">Social Interaction</div></div>
-            <div id="kpiSocialInteraction" class="kpi-value">...</div>
-            <div id="kpiSocialInteractionDelta" class="kpi-delta delta-neutral"></div>
-        </div>
-        <div class="card">
-            <div class="card-header-row"><div class="card-label">Social Impression</div></div>
-            <div id="kpiSocialImpression" class="kpi-value">...</div>
-            <div id="kpiSocialImpressionDelta" class="kpi-delta delta-neutral"></div>
-        </div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Social Reach</div></div><div id="kpiSocialReach" class="kpi-value">...</div><div id="kpiSocialReachDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Social Engagement</div></div><div id="kpiSocialEngagement" class="kpi-value">...</div><div id="kpiSocialEngagementDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Social Interaction</div></div><div id="kpiSocialInteraction" class="kpi-value">...</div><div id="kpiSocialInteractionDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Social Impression</div></div><div id="kpiSocialImpression" class="kpi-value">...</div><div id="kpiSocialImpressionDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
 
       <div id="rowCharts" class="grid grid-2">
@@ -251,13 +237,17 @@
   let genderChartInstance = null;
   let activitiesChartInstance = null;
 
-  // --- CALCULATE DELTA HELPER ---
+  // --- CALCULATE DELTA HELPER (Dynamic Year Label) ---
   function calculateDelta(curr, prev) {
+      const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+      const prevYear = selectedYear - 1;
+      
       if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
+      
       const d = ((curr - prev) / prev) * 100;
       const a = d > 0 ? "▲" : d < 0 ? "▼" : "";
       const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
-      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs Prev Year`, c: `kpi-delta ${cl}` };
+      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs ${prevYear}`, c: `kpi-delta ${cl}` };
   }
 
   // --- REPORT GENERATOR ---
@@ -439,6 +429,10 @@
     const dAud = calculateDelta(mCurr.audience, mPrev.audience); document.getElementById("kpiAudienceDelta").textContent = dAud.t; document.getElementById("kpiAudienceDelta").className = dAud.c;
     const dBud = calculateDelta(mCurr.budget, mPrev.budget); document.getElementById("kpiBudgetDelta").textContent = dBud.t; document.getElementById("kpiBudgetDelta").className = dBud.c;
     const dCit = calculateDelta(mCurr.cities, mPrev.cities); document.getElementById("kpiCitiesDelta").textContent = dCit.t; document.getElementById("kpiCitiesDelta").className = dCit.c;
+    
+    // Update label specifically for the audience badge
+    const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
+    document.getElementById("audienceDeltaBadgeText").textContent = "vs " + (selectedYear - 1);
   }
   function computeMetrics(data, quarterFilter) {
     let activities = 0, totalAudience = 0, totalBudget = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
@@ -468,5 +462,3 @@
 </script>
 </body>
 </html>
-
-
