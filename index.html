@@ -289,7 +289,7 @@
             <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Implemented By Zain</div>
         </div>
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div id="audienceDeltaBadge" class="badge-soft"><span class="badge-soft-dot"></span><span id="audienceDeltaBadgeText">vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
-        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>City Coverd</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Cities Covered</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
@@ -391,12 +391,13 @@
   const IQD_RATE = 1320;
 
   let isAdmin = false; 
-  let allLogistics = []; // Stores all years for Activities chart filter
   let currentLogistics = []; 
-  let yearlyMetricsArray = []; 
-  let comparisonLogistics = [];
+  let comparisonLogistics = []; // Previous Year Data
+  let allLogistics = []; // For Activity Chart
   let rawSocial = [];
   let rawRegistration = [];
+  let yearlyMetrics = {}; 
+  let yearlyMetricsArray = [];
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
@@ -412,7 +413,6 @@
   function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      
       if(tab === 'activities') {
           document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
           document.getElementById('tabActivities').classList.add('active');
@@ -424,65 +424,28 @@
 
   // --- METRICS TABLE LOGIC ---
   function renderMetricsTable() {
-      const tbody = document.getElementById("metricsTableBody");
-      tbody.innerHTML = "";
-      
+      const tbody = document.getElementById("metricsTableBody"); tbody.innerHTML = "";
       const sorted = [...yearlyMetricsArray].sort((a,b) => b.year - a.year);
-      
       sorted.forEach(row => {
           const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td><strong>${row.year}</strong></td>
-            <td>${Number(row.jobs_created).toLocaleString()}</td>
-            <td>${Number(row.actual_budget).toLocaleString()}</td>
-            <td>${Number(row.planned_budget).toLocaleString()}</td>
-            <td style="text-align:center;">
-               <button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button>
-            </td>
-          `;
+          tr.innerHTML = `<td><strong>${row.year}</strong></td><td>${Number(row.jobs_created).toLocaleString()}</td><td>${Number(row.actual_budget).toLocaleString()}</td><td>${Number(row.planned_budget).toLocaleString()}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button></td>`;
           tbody.appendChild(tr);
       });
   }
-
   function editMetric(year) {
-      const row = yearlyMetricsArray.find(r => r.year == year);
-      if(!row) return;
-      document.getElementById("inpMetaYear").value = row.year;
-      document.getElementById("inpMetaJobs").value = row.jobs_created;
-      document.getElementById("inpMetaActual").value = row.actual_budget;
-      document.getElementById("inpMetaPlanned").value = row.planned_budget;
-      // switch tab? already there.
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const row = yearlyMetricsArray.find(r => r.year == year); if(!row) return;
+      document.getElementById("inpMetaYear").value = row.year; document.getElementById("inpMetaJobs").value = row.jobs_created; document.getElementById("inpMetaActual").value = row.actual_budget; document.getElementById("inpMetaPlanned").value = row.planned_budget; window.scrollTo({ top: 0, behavior: 'smooth' });
   }
-
   async function saveMetricRow() {
-      const year = document.getElementById("inpMetaYear").value;
-      const jobs = document.getElementById("inpMetaJobs").value;
-      const actual = document.getElementById("inpMetaActual").value;
-      const planned = document.getElementById("inpMetaPlanned").value;
-      
+      const year = document.getElementById("inpMetaYear").value; const jobs = document.getElementById("inpMetaJobs").value; const actual = document.getElementById("inpMetaActual").value; const planned = document.getElementById("inpMetaPlanned").value;
       if(!year) return alert("Year is required");
-      
-      const { error } = await supabaseClient.from('yearly_metrics').upsert({
-          year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0
-      });
-      
-      if(error) { alert("Error: " + error.message); }
-      else {
-          showToast("Metric Saved!");
-          document.getElementById("inpMetaYear").value = "";
-          document.getElementById("inpMetaJobs").value = "";
-          document.getElementById("inpMetaActual").value = "";
-          document.getElementById("inpMetaPlanned").value = "";
-          await fetchAllData(); 
-      }
+      const { error } = await supabaseClient.from('yearly_metrics').upsert({ year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0 });
+      if(error) { alert("Error: " + error.message); } else { showToast("Metric Saved!"); document.getElementById("inpMetaYear").value = ""; document.getElementById("inpMetaJobs").value = ""; document.getElementById("inpMetaActual").value = ""; document.getElementById("inpMetaPlanned").value = ""; await fetchAllData(); }
   }
 
   // --- ACTIVITY TOGGLE ---
   async function toggleZain(id, isChecked) {
-      const row = allLogistics.find(r => r.id === id); // search in all
-      if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
-      
+      const row = allLogistics.find(r => r.id === id); if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
       const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id);
       if(error) { alert("Error saving: " + error.message); fetchAllData(); } else { showToast("Status updated!"); }
   }
@@ -494,11 +457,10 @@
           const prevYear = selectedYear - 1;
           document.getElementById("titleYear").textContent = selectedYear;
 
-          // 1. Fetch ALL Logistics (for Activities Chart Filter & Admin)
+          // 1. Fetch ALL Logistics
           const { data: allLogs } = await supabaseClient.from('logistics_all').select('*');
           allLogistics = allLogs || [];
           
-          // Filter Current & Prev from the full set
           currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
           comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
 
@@ -520,7 +482,6 @@
               populateYearFilters();
           }
 
-          // UI Updates
           renderActivityTable();
           renderMetricsTable();
           renderKPIsAndCharts(selectedYear);
@@ -542,27 +503,18 @@
     document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
     
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
-    document.getElementById("btnCancelEdit").style.display = "block"; 
-    document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
+    document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
   }
-
   function cancelEdit() {
-    document.getElementById("editId").value = ""; 
-    document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; 
-    document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; 
-    document.getElementById("inpZainImplemented").checked = false;
+    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; document.getElementById("inpZainImplemented").checked = false;
     const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
   }
-
   async function saveActivity() {
     const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; const city = document.getElementById("inpCity").value; const aud = document.getElementById("inpAudience").value; const bud = document.getElementById("inpBudget").value; const stat = document.getElementById("inpStatus").value; const desc = document.getElementById("inpDesc").value;
     const isZain = document.getElementById("inpZainImplemented").checked;
     if (!name || !date) { alert("Name and Date are required!"); return; }
     
-    // We infer Year from Date
-    const dObj = new Date(date);
-    const y = dObj.getFullYear();
-
+    const dObj = new Date(date); const y = dObj.getFullYear();
     const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: city, [COLS_LOGISTICS.audience]: aud, [COLS_LOGISTICS.budget]: bud, [COLS_LOGISTICS.status]: stat, [COLS_LOGISTICS.description]: desc, [COLS_LOGISTICS.is_zain]: isZain, "Year": y };
     try {
       if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; showToast("Activity Updated!"); } 
@@ -570,30 +522,13 @@
       cancelEdit(); await fetchAllData();
     } catch (err) { console.error(err); alert("Error saving: " + err.message); }
   }
-
   async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await fetchAllData(); } catch(err) { alert("Error deleting: " + err.message); } }
-
   function renderActivityTable() {
     const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
-    // Show Current Year logistics in table by default, or all? 
-    // Usually admin wants to see current. 
-    // Let's show currentLogistics.
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
-      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || "";
-      const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
-      tr.innerHTML = `
-        <td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td>
-        <td>${row[COLS_LOGISTICS.start_date]}</td>
-        <td><strong>${row[COLS_LOGISTICS.name]}</strong></td>
-        <td>${row[COLS_LOGISTICS.city]}</td>
-        <td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td>
-        <td class="desc-cell">${desc}</td>
-        <td style="text-align:center; white-space:nowrap;">
-            <button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button>
-            <button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button>
-        </td>`; 
-      tbody.appendChild(tr);
+      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
+      tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td><td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
     });
   }
 
@@ -638,7 +573,6 @@
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
-      // SOCIAL DELTAS
       rawSocial.forEach(row => { 
         const y = String(row[COLS_SOCIAL.year]).trim();
         if (y == selectedYear) { 
@@ -654,18 +588,16 @@
       const dInt = calculateDelta(tSoc.interaction, tSocPrev.interaction); document.getElementById("kpiSocialInteractionDelta").textContent = dInt.t; document.getElementById("kpiSocialInteractionDelta").className = dInt.c;
       const dImp = calculateDelta(tSoc.impression, tSocPrev.impression); document.getElementById("kpiSocialImpressionDelta").textContent = dImp.t; document.getElementById("kpiSocialImpressionDelta").className = dImp.c;
 
-      // Update Activity Chart Filter Dropdown
       const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
       const actSelect = document.getElementById("actChartFilter");
       actSelect.innerHTML = '<option value="all">All Years</option>';
       Array.from(uniqueYears).sort().forEach(y => {
           const opt = document.createElement("option"); opt.value = y; opt.textContent = y;
-          if(y == selectedYear) opt.selected = true; // default to current view year
+          if(y == selectedYear) opt.selected = true; 
           actSelect.appendChild(opt);
       });
 
-      updateActivitiesChart(); // Render Act Chart
-      
+      updateActivitiesChart();
       applyFilters(); 
       updateSimChart(); 
       updateGenderChart();
@@ -701,12 +633,12 @@
     
     let pct = 0; if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
     document.getElementById("budgetProgressBar").style.width = pct + "%";
-    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
+    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% Spent from Actual";
     
     if(planned > 0) {
         const diff = ((actual - planned) / planned) * 100;
         const sign = diff > 0 ? "+" : "";
-        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`;
+        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% Actual vs Plan`;
         document.getElementById("budgetPlanComparison").style.color = diff > 0 ? "#f97373" : "#4ade80"; 
     } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
@@ -724,45 +656,34 @@
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
       if (name.length < 2 || name.includes("total")) return; if (status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
-      activities++; totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
+      
+      // ONLINE FILTER CHECK
+      const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase();
+      const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom");
+
+      activities++; 
+      
+      // ONLY ADD AUDIENCE IF NOT ONLINE
+      if(!isOnline) {
+          totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
+      }
+      
+      totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
       if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
-      const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom"); if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
+      
+      if (city && city !== "city" && city !== "null" && !isOnline) citySet.add(city);
     }); 
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
   // --- CHART FUNCTIONS ---
-  
   function updateActivitiesChart() {
       const filter = document.getElementById("actChartFilter").value;
       const mCounts = Array(12).fill(0);
-      
-      let dataset = [];
-      if(filter === "all") {
-          dataset = allLogistics;
-      } else {
-          dataset = allLogistics.filter(row => row.Year == filter);
-      }
-      
-      dataset.forEach(row => { 
-          const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); 
-          if(d) mCounts[d.getMonth()]++; 
-      });
-
+      let dataset = (filter === "all") ? allLogistics : allLogistics.filter(row => row.Year == filter);
+      dataset.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); if(d) mCounts[d.getMonth()]++; });
       if (activitiesChartInstance) activitiesChartInstance.destroy();
-      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { 
-          type: "bar", 
-          data: { 
-              labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], 
-              datasets:[{ 
-                  label: filter === "all" ? "All Years" : filter, 
-                  data: mCounts, 
-                  backgroundColor:"#d946ef", 
-                  borderRadius:4 
-              }] 
-          }, 
-          options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } 
-      });
+      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label: filter === "all" ? "All Years" : filter, data: mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
   }
 
   function updateSimChart() {
@@ -803,7 +724,6 @@
   }
 
   function renderGenderLineChart() {
-      // Group by Year
       const yearStats = {};
       rawRegistration.forEach(row => {
           const y = row._derivedYear;
@@ -812,36 +732,15 @@
           if (g.includes("female") || g === "f" || g.includes("انثى") || g.includes("woman")) yearStats[y].f++; 
           else if (g.includes("male") || g === "m" || g.includes("ذكر") || g.includes("man")) yearStats[y].m++;
       });
-
       const years = Object.keys(yearStats).sort();
       const percentages = years.map(y => {
           const t = yearStats[y].m + yearStats[y].f;
           return t > 0 ? ((yearStats[y].f / t) * 100).toFixed(1) : 0;
       });
-
       if (genderLineChartInstance) genderLineChartInstance.destroy();
       genderLineChartInstance = new Chart(document.getElementById("genderLineChart"), {
-          type: 'line',
-          data: {
-              labels: years,
-              datasets: [{
-                  label: 'Female Participation %',
-                  data: percentages,
-                  borderColor: '#f472b6',
-                  backgroundColor: 'rgba(244, 114, 182, 0.2)',
-                  tension: 0.4,
-                  fill: true
-              }]
-          },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: {
-                  y: { beginAtZero: true, max: 100, grid: { color: '#333' } },
-                  x: { grid: { display: false } }
-              }
-          }
+          type: 'line', data: { labels: years, datasets: [{ label: 'Female Participation %', data: percentages, borderColor: '#f472b6', backgroundColor: 'rgba(244, 114, 182, 0.2)', tension: 0.4, fill: true }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#333' } }, x: { grid: { display: false } } } }
       });
   }
 
@@ -862,3 +761,4 @@
 </script>
 </body>
 </html>
+
