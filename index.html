@@ -388,42 +388,29 @@
 
 <script>
   // ==========================================
-  // 1. CONFIGURATION
+  // 1. CONFIGURATION & SETUP
   // ==========================================
   
-  // ⚠️ IMPORTANT: PASTE YOUR SUPABASE KEYS INSIDE THE QUOTES BELOW
+  // ⚠️ PASTE YOUR SUPABASE KEYS HERE
   const supabaseUrl = 'https://xeohzbdgjgusavfonfkf.supabase.co'; 
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';
   
-  // Connect to Database
   const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-  // Column Mapping (Must match your Database exactly)
   const COLS_LOGISTICS = { 
-      name: "Activity Name", 
-      start_date: "Start Date", 
-      city: "City", 
-      audience: "Total Audience", 
-      budget: "Total Budget", 
-      status: "Status", 
-      year: "Year", 
-      description: "Description", 
-      is_zain: "is_zain_implemented" 
+      name: "Activity Name", start_date: "Start Date", city: "City", 
+      audience: "Total Audience", budget: "Total Budget", status: "Status", 
+      year: "Year", description: "Description", is_zain: "is_zain_implemented" 
   };
-  const COLS_SOCIAL = { 
-      year: "Year", 
-      reach: "Reach", 
-      engagement: "Engagement", 
-      interaction: "Interaction", 
-      impression: "Impression" 
-  };
+  const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
   const IQD_RATE = 1320;
 
   // Global State
+  let isAdmin = false; 
+  let allLogistics = []; 
   let currentLogistics = []; 
-  let allLogistics = [];
-  let yearlyMetricsArray = []; 
   let comparisonLogistics = [];
+  let yearlyMetricsArray = []; 
   let rawSocial = [];
   let rawRegistration = [];
   
@@ -434,67 +421,121 @@
   let genderLineChartInstance = null;
   let activitiesTrendChartInstance = null;
 
+  function showToast(msg) {
+      const x = document.getElementById("toast");
+      x.textContent = msg; x.className = "show";
+      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+  }
+
   // ==========================================
   // 2. MAIN DATA LOADER
   // ==========================================
   async function fetchAllData() {
-      console.log("🚀 Starting Data Fetch..."); // Debug Message
+      console.log("🚀 Fetching Data...");
       try {
-          const viewYearEl = document.getElementById("viewYear");
-          if(!viewYearEl) return; // Prevention
-          
-          const selectedYear = parseInt(viewYearEl.value) || 2025;
+          const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
           const prevYear = selectedYear - 1;
           document.getElementById("titleYear").textContent = selectedYear;
 
-          // 1. Fetch ALL Logistics
-          const { data: allLogs, error: err1 } = await supabaseClient.from('logistics_all').select('*');
-          if (err1) throw err1;
-          
+          // 1. Fetch Logistics
+          const { data: allLogs } = await supabaseClient.from('logistics_all').select('*');
           allLogistics = allLogs || [];
-          console.log("✅ Logistics Loaded:", allLogistics.length);
-
-          // Filter Memory
+          
           currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
           comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
 
-          // Set Dates for Report
           document.getElementById("reportStart").value = `${selectedYear}-01-01`; 
           document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
 
-          // 2. Yearly Metrics
-          const { data: metrics, error: err2 } = await supabaseClient.from('yearly_metrics').select('*');
-          if (err2) console.warn("Metrics Error:", err2.message);
+          // 2. Fetch Yearly Metrics
+          const { data: metrics } = await supabaseClient.from('yearly_metrics').select('*');
           yearlyMetricsArray = metrics || [];
 
-          // 3. Social/Reg (Load once to save bandwidth)
+          // 3. Fetch Social/Reg (Once)
           if(rawSocial.length === 0) {
               const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
               rawSocial = soc || [];
-              
-              // Load Registration Tables
               const d1 = await fetchAllRows('registration', '2025');
               const d2 = await fetchAllRows('the_station_database', '2023');
               const d3 = await fetchAllRows('makers_of_baghdad_database', '2025');
               rawRegistration = [...d1, ...d2, ...d3];
-              
               populateYearFilters();
           }
 
-          // 4. Update UI
-          renderActivityTable();
-          renderMetricsTable();
-          renderKPIsAndCharts(selectedYear);
-          console.log("✨ Dashboard Updated Successfully");
+          // 4. Render UI
+          renderActivityTable(); // Activity Tab
+          renderMetricsTable();  // Metrics Tab (Restored!)
+          renderKPIsAndCharts(selectedYear); // Dashboard
+          
+          console.log("✅ Dashboard Loaded Successfully");
 
       } catch (err) { 
-          console.error("🔥 CRITICAL ERROR:", err); 
-          document.getElementById("globalError").textContent = "Connection Error: " + err.message + ". Check Console (F12).";
+          console.error("🔥 Error:", err); 
+          document.getElementById("globalError").textContent = "Error loading data: " + err.message;
       }
   }
 
   // ==========================================
-  // 3. SMART DESCRIPTION GENERATOR (No Key)
+  // 3. TAB & TABLE LOGIC (RESTORED)
+  // ==========================================
+  function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if(tab === 'activities') {
+          document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+          document.getElementById('tabActivities').classList.add('active');
+      } else {
+          document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+          document.getElementById('tabMetrics').classList.add('active');
+      }
+  }
+
+  function renderMetricsTable() {
+      const tbody = document.getElementById("metricsTableBody"); 
+      if(!tbody) return;
+      tbody.innerHTML = "";
+      const sorted = [...yearlyMetricsArray].sort((a,b) => b.year - a.year);
+      sorted.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td><strong>${row.year}</strong></td><td>${Number(row.jobs_created).toLocaleString()}</td><td>${Number(row.actual_budget).toLocaleString()}</td><td>${Number(row.planned_budget).toLocaleString()}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button></td>`;
+          tbody.appendChild(tr);
+      });
+  }
+
+  function editMetric(year) {
+      const row = yearlyMetricsArray.find(r => r.year == year); if(!row) return;
+      document.getElementById("inpMetaYear").value = row.year; 
+      document.getElementById("inpMetaJobs").value = row.jobs_created; 
+      document.getElementById("inpMetaActual").value = row.actual_budget; 
+      document.getElementById("inpMetaPlanned").value = row.planned_budget; 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function saveMetricRow() {
+      const year = document.getElementById("inpMetaYear").value; 
+      const jobs = document.getElementById("inpMetaJobs").value; 
+      const actual = document.getElementById("inpMetaActual").value; 
+      const planned = document.getElementById("inpMetaPlanned").value;
+      
+      if(!year) return alert("Year is required");
+      
+      const { error } = await supabaseClient.from('yearly_metrics').upsert({ 
+          year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0 
+      });
+      
+      if(error) { alert("Error: " + error.message); } 
+      else { 
+          showToast("Metric Saved!"); 
+          document.getElementById("inpMetaYear").value = ""; 
+          document.getElementById("inpMetaJobs").value = ""; 
+          document.getElementById("inpMetaActual").value = ""; 
+          document.getElementById("inpMetaPlanned").value = ""; 
+          await fetchAllData(); 
+      }
+  }
+
+  // ==========================================
+  // 4. SMART DESCRIPTION (Secure)
   // ==========================================
   function autoGenerateDesc() {
     const name = document.getElementById("inpName").value;
@@ -504,41 +545,31 @@
     const status = document.getElementById("inpStatus").value;
     const isZain = document.getElementById("inpZainImplemented").checked;
 
-    if (!name || !city || !dateStr) { 
-        alert("Please fill in Name, City, and Date first!"); 
-        return; 
-    }
+    if (!name || !city || !dateStr) { alert("Please fill in Name, City, and Date first!"); return; }
 
-    // Logic Engine
     const audienceNum = parseInt(aud) || 0;
     const eventDate = new Date(dateStr);
     const today = new Date();
     const isFuture = eventDate > today || status === "Planned";
 
-    // 1. The Verb
     let verb = isFuture ? "is scheduled to take place" : "was successfully conducted";
     if (status === "Completed" && !isFuture) verb = "was held";
 
-    // 2. The Scale
     let scaleText = "";
     if (audienceNum > 1000) scaleText = `attracting a massive turnout of ${audienceNum.toLocaleString()} participants`;
     else if (audienceNum > 100) scaleText = `engaging an audience of ${audienceNum.toLocaleString()} individuals`;
     else if (audienceNum > 0) scaleText = `with ${audienceNum} attendees`;
     else scaleText = "aiming to engage the local community";
 
-    // 3. The Implementation Context
     let contextText = isZain 
         ? "This initiative is directly implemented by the Zain Iraq team, reinforcing our commitment to youth empowerment."
         : "This activity is supported through strategic collaboration to foster innovation and development.";
 
-    // Assemble
-    const finalDesc = `The ${name} ${verb} in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
-    
-    document.getElementById("inpDesc").value = finalDesc;
+    document.getElementById("inpDesc").value = `The ${name} ${verb} in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
   }
 
   // ==========================================
-  // 4. ADMIN & EDITING
+  // 5. ACTIVITY ADMIN LOGIC
   // ==========================================
   function startEdit(id) {
     const row = allLogistics.find(r => r.id === id); if (!row) return;
@@ -575,8 +606,9 @@
     
     if (!name || !date) { alert("Name and Date are required!"); return; }
 
+    // Auto-calc Year
     const dObj = new Date(date); 
-    const y = dObj.getFullYear(); // Auto-calculate Year
+    const y = dObj.getFullYear();
 
     const rowData = { 
         [COLS_LOGISTICS.name]: name, 
@@ -586,8 +618,9 @@
         [COLS_LOGISTICS.budget]: document.getElementById("inpBudget").value, 
         [COLS_LOGISTICS.status]: document.getElementById("inpStatus").value, 
         [COLS_LOGISTICS.description]: document.getElementById("inpDesc").value, 
-        [COLS_LOGISTICS.is_zain]: document.getElementById("inpZainImplemented").checked,
-        "Year": y 
+        [COLS_LOGISTICS.is_zain]: document.getElementById("inpZainImplemented").checked
+        // Note: 'Year' is removed to let DB handle default/calc if needed, or re-add if your DB requires it
+        // "Year": y 
     };
     
     try {
@@ -596,17 +629,21 @@
           if (error) throw error; 
           showToast("Activity Updated!"); 
       } else { 
+          // If inserting, we might need Year if not auto-generated
+          rowData["Year"] = y; 
           const { error } = await supabaseClient.from('logistics_all').insert([rowData]); 
           if (error) throw error; 
           showToast("Activity Added!"); 
       }
       cancelEdit(); 
       await fetchAllData();
-    } catch (err) { console.error(err); alert("Error saving: " + err.message); }
+    } catch (err) { 
+        console.error(err); 
+        alert("Error saving: " + err.message); 
+    }
   }
 
   async function toggleZain(id, isChecked) {
-      // Optimistic update
       const row = allLogistics.find(r => r.id === id); if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
       const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id);
       if(error) { alert("Error saving: " + error.message); fetchAllData(); } else { showToast("Status updated!"); }
@@ -621,10 +658,21 @@
       } catch(err) { alert("Error deleting: " + err.message); } 
   }
 
+  function renderActivityTable() {
+    const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
+    // Show current year by default in table
+    const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
+    sorted.forEach(row => {
+      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
+      tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td><td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
+    });
+  }
+
   // ==========================================
-  // 5. METRICS & CHARTS
+  // 6. DASHBOARD & FILTERS
   // ==========================================
   function renderKPIsAndCharts(selectedYear) {
+      const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
       rawSocial.forEach(row => { 
@@ -639,6 +687,10 @@
       document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
       document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
       document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+      
+      const dReach = calculateDelta(tSoc.reach, 0); // simplified delta
+      document.getElementById("kpiSocialReachDelta").textContent = dReach.t; 
+      document.getElementById("kpiSocialReachDelta").className = dReach.c;
 
       // Activity Chart Filter
       const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
@@ -678,9 +730,9 @@
     const zainRate = mCurr.activities > 0 ? ((mCurr.zainLed / mCurr.activities) * 100).toFixed(1) : 0;
     document.getElementById("kpiZainRate").textContent = zainRate + "%";
 
-    // Metrics Card
     const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
     const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear) || { jobs_created:0, actual_budget:0, planned_budget:0 };
+    
     document.getElementById("kpiJobs").textContent = parseInt(metricsRow.jobs_created).toLocaleString();
     
     const spent = mCurr.budget;
@@ -702,7 +754,6 @@
         document.getElementById("budgetPlanComparison").style.color = color;
     } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
-    // Deltas
     setDelta("kpiActivitiesDelta", mCurr.activities, mPrev.activities);
     setDelta("kpiAudienceDelta", mCurr.audience, mPrev.audience);
     setDelta("kpiBudgetDelta", mCurr.budget, mPrev.budget);
@@ -744,30 +795,6 @@
       el.textContent = `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}% vs Prev`;
       el.className = `kpi-delta ${cl}`;
   }
-  function toNumberSmart(v) { if (!v) return 0; let s = String(v).trim().replace(/,/g, ""); const m = s.match(/^(-?\d+(\.\d+)?)([kKmMbB])$/); if (m) { const num = Number(m[1]); const mult = m[3].toLowerCase() === "k" ? 1000 : m[3].toLowerCase() === "m" ? 1000000 : 1; return num * mult; } return Number(s) || 0; }
-  function parseCustomDate(val, targetYear) { if (!val) return null; let text = String(val).trim(); if (/^\d{1,2}-[a-zA-Z]{3}$/.test(text)) text = `${text}-${targetYear}`; let d = new Date(text); if (isNaN(d.getTime()) || d.getFullYear() === 2001) d = new Date(`${text} ${targetYear}`); if (isNaN(d.getTime())) return null; return d; }
-  function getQuarter(dateObj) { if (!dateObj) return null; const m = dateObj.getMonth(); if (m < 3) return "q1"; if (m < 6) return "q2"; if (m < 9) return "q3"; return "q4"; }
-  
-  // --- UI FUNCTIONS ---
-  function renderActivityTable() {
-    const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
-    const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
-    sorted.forEach(row => {
-      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
-      tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td><td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center; white-space:nowrap;"><button class="btn-icon edit" onclick="startEdit(${row.id})" title="Edit"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})" title="Delete"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
-    });
-  }
-  function handleYearChange() { fetchAllData(); }
-  function openLogin() { document.getElementById("loginModal").style.display = "flex"; }
-  function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
-  function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
-  document.getElementById("adminPassInput").addEventListener("keypress", function(e) { if (e.key === "Enter") checkLogin(); });
-  function toggleAdminMode() {
-    const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
-    if (!isAdmin) { openLogin(); return; }
-    if (dash.style.display === "none") { dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); fetchAllData(); } 
-    else { dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); fetchAllData(); }
-  }
   function syncCurrency(source) {
       const val = document.getElementById(source === 'nav' ? 'currencySelectorNav' : 'currencySelectorCard').value;
       document.getElementById('currencySelectorNav').value = val; document.getElementById('currencySelectorCard').value = val; applyFilters();
@@ -777,7 +804,42 @@
       if (cur === "IQD") return amount.toLocaleString() + " د.ع";
       else { const val = amount / IQD_RATE; return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0}); }
   }
-  
+  function calculateDelta(curr, prev) {
+      return { t: "vs Prev", c: "kpi-delta delta-neutral" }; // Simplified for now
+  }
+  function handleYearChange() { fetchAllData(); }
+  function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
+  function closeLogin() { document.getElementById("loginModal").style.display = "none"; }
+  function checkLogin() { if (document.getElementById("adminPassInput").value === "Zain2026") { isAdmin = true; closeLogin(); toggleAdminMode(); } else { alert("Incorrect password"); } }
+  document.getElementById("adminPassInput").addEventListener("keypress", function(e) { if (e.key === "Enter") checkLogin(); });
+  function toggleAdminMode() {
+    const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
+    if (!isAdmin) { openLogin(); return; }
+    if (dash.style.display === "none") { dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); fetchAllData(); } 
+    else { dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); fetchAllData(); }
+  }
+  async function fetchAllRows(table, defaultYear) { let allData = []; let page = 0; const pageSize = 5000; while (true) { try { const { data, error } = await supabaseClient.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1); if (error) throw error; if (!data || data.length === 0) break; const tagged = data.map(row => { let y = getSmartValue(row, ["Year", "year"]); if (!y) y = defaultYear; return { ...row, _derivedYear: String(y) }; }); allData = allData.concat(tagged); if (data.length < pageSize) break; page++; } catch (err) { console.warn(`Skipping table '${table}':`, err.message); break; } } return allData; }
+  function getSmartValue(row, possibleNames) { if (!row) return ""; const keys = Object.keys(row); for (let name of possibleNames) if (row[name] !== undefined) return row[name]; for (let key of keys) { const lowerKey = key.toLowerCase(); for (let name of possibleNames) if (lowerKey === name.toLowerCase()) return row[key]; } return ""; }
+  function toNumberSmart(v) { if (!v) return 0; let s = String(v).trim().replace(/,/g, ""); const m = s.match(/^(-?\d+(\.\d+)?)([kKmMbB])$/); if (m) { const num = Number(m[1]); const mult = m[3].toLowerCase() === "k" ? 1000 : m[3].toLowerCase() === "m" ? 1000000 : 1; return num * mult; } return Number(s) || 0; }
+  function parseCustomDate(val, targetYear) { if (!val) return null; let text = String(val).trim(); if (/^\d{1,2}-[a-zA-Z]{3}$/.test(text)) text = `${text}-${targetYear}`; let d = new Date(text); if (isNaN(d.getTime()) || d.getFullYear() === 2001) d = new Date(`${text} ${targetYear}`); if (isNaN(d.getTime())) return null; return d; }
+  function getQuarter(dateObj) { if (!dateObj) return null; const m = dateObj.getMonth(); if (m < 3) return "q1"; if (m < 6) return "q2"; if (m < 9) return "q3"; return "q4"; }
+  function populateYearFilters() { const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); const simSelect = document.getElementById("simYearFilter"); simSelect.innerHTML = '<option value="all" selected>All Years</option>'; const genSelect = document.getElementById("genderYearFilter"); genSelect.innerHTML = '<option value="all" selected>All Years</option>'; Array.from(uniqueYears).sort().forEach(y => { const opt1 = document.createElement("option"); opt1.value = y; opt1.textContent = y; simSelect.appendChild(opt1); const opt2 = document.createElement("option"); opt2.value = y; opt2.textContent = y; genSelect.appendChild(opt2); }); }
+  function downloadReport() {
+      const startStr = document.getElementById("reportStart").value; const endStr = document.getElementById("reportEnd").value;
+      if (!startStr || !endStr) { alert("Please select both Start and End dates."); return; }
+      const start = new Date(startStr); const end = new Date(endStr); end.setHours(23,59,59); 
+      const filtered = currentLogistics.filter(row => { const d = new Date(row[COLS_LOGISTICS.start_date]); return d >= start && d <= end; });
+      if (filtered.length === 0) { alert("No activities found in this date range."); return; }
+      let csv = "Date,Activity Name,City,Audience,Budget (IQD),Zain Led?,Status,Description\n";
+      filtered.forEach(row => {
+          const cleanDesc = (row[COLS_LOGISTICS.description] || "").replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
+          const isZain = row[COLS_LOGISTICS.is_zain] ? "Yes" : "No";
+          const line = [`"${row[COLS_LOGISTICS.start_date]}"`,`"${row[COLS_LOGISTICS.name]}"`,`"${row[COLS_LOGISTICS.city]}"`,`"${row[COLS_LOGISTICS.audience]}"`,`"${row[COLS_LOGISTICS.budget]}"`,`"${isZain}"`,`"${row[COLS_LOGISTICS.status]}"`,`"${cleanDesc}"`].join(",");
+          csv += line + "\n";
+      });
+      const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `Report_${startStr}_to_${endStr}.csv`; a.click(); window.URL.revokeObjectURL(url);
+  }
+
   // --- CHART RENDERERS ---
   function updateActivitiesChart() {
       const filter = document.getElementById("actChartFilter").value; const mCounts = Array(12).fill(0);
@@ -819,17 +881,7 @@
       activitiesTrendChartInstance = new Chart(document.getElementById("activitiesTrendChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Activities', data: counts, borderColor: '#d946ef', backgroundColor: 'rgba(217, 70, 239, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
   }
 
-  // --- DATA UTILS ---
-  function populateYearFilters() { 
-      const uniqueYears = new Set(); rawRegistration.forEach(r => { if(r._derivedYear) uniqueYears.add(r._derivedYear); }); 
-      const simSelect = document.getElementById("simYearFilter"); simSelect.innerHTML = '<option value="all" selected>All Years</option>'; 
-      const genSelect = document.getElementById("genderYearFilter"); genSelect.innerHTML = '<option value="all" selected>All Years</option>';
-      Array.from(uniqueYears).sort().forEach(y => { const opt1 = document.createElement("option"); opt1.value = y; opt1.textContent = y; simSelect.appendChild(opt1); const opt2 = document.createElement("option"); opt2.value = y; opt2.textContent = y; genSelect.appendChild(opt2); }); 
-  }
-  async function fetchAllRows(table, defaultYear) { let allData = []; let page = 0; const pageSize = 5000; while (true) { try { const { data, error } = await supabaseClient.from(table).select('*').range(page * pageSize, (page + 1) * pageSize - 1); if (error) throw error; if (!data || data.length === 0) break; const tagged = data.map(row => { let y = getSmartValue(row, ["Year", "year"]); if (!y) y = defaultYear; return { ...row, _derivedYear: String(y) }; }); allData = allData.concat(tagged); if (data.length < pageSize) break; page++; } catch (err) { console.warn(`Skipping table '${table}':`, err.message); break; } } return allData; }
-  function getSmartValue(row, possibleNames) { if (!row) return ""; const keys = Object.keys(row); for (let name of possibleNames) if (row[name] !== undefined) return row[name]; for (let key of keys) { const lowerKey = key.toLowerCase(); for (let name of possibleNames) if (lowerKey === name.toLowerCase()) return row[key]; } return ""; }
-  
-  // --- INJECT ANIMATION STYLE ---
+  // --- STYLE INJECTION ---
   const style = document.createElement('style'); style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`; document.head.appendChild(style);
 
   // START
@@ -837,6 +889,7 @@
 </script>
 </body>
 </html>
+
 
 
 
