@@ -457,15 +457,39 @@
   }
 
   // --- USER MANAGEMENT ---
-  async function fetchUsersList() {
+ async function fetchUsersList() {
       const { data, error } = await supabaseClient.from('profiles').select('*').order('created_at', {ascending: false});
+      
       if(data) {
           let html = '';
           data.forEach(user => {
-              if(user.role === 'admin') return; 
-              html += `<div class="user-row"><div><div style="font-size:13px; font-weight:600; color:#fff;">${user.email}</div><div class="status-badge s-${user.role}" style="display:inline-block; margin-top:4px;">${user.role}</div></div><div>${user.role === 'pending' ? `<button class="btn-action btn-approve" onclick="updateUserRole('${user.id}','viewer')">Approve</button>` : ''}${user.role === 'viewer' ? `<button class="btn-action btn-reject" onclick="updateUserRole('${user.id}','pending')">Revoke</button>` : ''}</div></div>`;
+              // Skip your own account so you don't accidentally demote yourself
+              if(user.id === currentUser?.id) return; 
+
+              let actions = '';
+              
+              // LOGIC: What buttons to show based on current role
+              if (user.role === 'pending') {
+                  actions = `<button class="btn-action btn-approve" onclick="updateUserRole('${user.id}','viewer')">Approve (Viewer)</button>`;
+              } else if (user.role === 'viewer') {
+                  actions = `
+                    <button class="btn-action btn-reject" onclick="updateUserRole('${user.id}','pending')">Revoke</button>
+                    <button class="btn-action" style="background:#d946ef; color:#fff;" onclick="updateUserRole('${user.id}','admin')">Make Admin</button>
+                  `;
+              } else if (user.role === 'admin') {
+                  actions = `<button class="btn-action" style="background:#38bdf8; color:#000;" onclick="updateUserRole('${user.id}','viewer')">Demote to Viewer</button>`;
+              }
+
+              html += `
+              <div class="user-row">
+                  <div>
+                      <div style="font-size:13px; font-weight:600; color:#fff;">${user.email}</div>
+                      <div class="status-badge s-${user.role}" style="display:inline-block; margin-top:4px;">${user.role}</div>
+                  </div>
+                  <div>${actions}</div>
+              </div>`;
           });
-          document.getElementById('userList').innerHTML = html || '<div style="color:#666; font-size:12px;">No pending requests.</div>';
+          document.getElementById('userList').innerHTML = html || '<div style="color:#666; font-size:12px;">No other users found.</div>';
       }
   }
   async function updateUserRole(uid, newRole) { const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', uid); if(!error) { showToast("User Updated"); fetchUsersList(); } }
@@ -690,6 +714,25 @@
   function populateYearFilters() { const uniqueYears = new Set(rawRegistration.map(r=>r._derivedYear)); const s=document.getElementById("simYearFilter"); const g=document.getElementById("genderYearFilter"); const a=document.getElementById("actChartFilter"); s.innerHTML='<option value="all">All Years</option>'; g.innerHTML='<option value="all">All Years</option>'; a.innerHTML='<option value="all">All Years</option>'; uniqueYears.forEach(y => { s.add(new Option(y,y)); g.add(new Option(y,y)); a.add(new Option(y,y)); }); }
 
   const style = document.createElement('style'); style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`; document.head.appendChild(style);
+  // --- PERSISTENCE: KEEP USER LOGGED IN ---
+  async function initApp() {
+      // 1. Check if Supabase has a saved session
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      
+      if (session) {
+          // User is logged in -> Check their Role immediately
+          console.log("Session found:", session.user.email);
+          await checkUserRole(session.user.id);
+      } else {
+          // No session -> Show Login Screen
+          document.getElementById('authScreen').style.display = 'flex';
+          document.getElementById('mainApp').style.display = 'none';
+      }
+  }
+
+  // Run this when the page loads
+  initApp();
 </script>
 </body>
 </html>
+
