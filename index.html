@@ -610,6 +610,9 @@
 // ==========================================
   // 3. ADMIN-ONLY AI GENERATOR (FIXED MODEL VERSION)
   // ==========================================
+ // ==========================================
+  // 3. ADMIN-ONLY AI GENERATOR (Entrepreneurship Focused)
+  // ==========================================
   async function generateAndSaveSummary() {
     if(!isAdmin) return alert("Only Admins can update the official summary.");
     
@@ -624,7 +627,7 @@
         localStorage.setItem("gemini_api_key", apiKey);
     }
 
-    // 2. Data Context
+    // 2. Gather Data
     const actCount = currentLogistics.length;
     const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience]||0), 0);
     const totalSpent = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.budget]||0), 0);
@@ -638,20 +641,32 @@
     btn.innerHTML = `Running AI...`; btn.disabled = true;
 
     try {
+        // 3. THE UPDATED PROMPT
         const prompt = `
-            Act as a Senior Analyst. Write a 3-4 sentence executive summary for Zain Iraq's CER program for ${year}.
-            Data:
-            - Activities: ${actCount}
-            - Audience: ${totalAud.toLocaleString()}
-            - Spent: $${totalSpent.toLocaleString()}
-            - Female Participation: ${femalePct}%
-            - Zain Implementation Rate: ${zainRate}%
+            Act as the Head of Innovation & Entrepreneurship at Zain Iraq. 
+            Write a powerful, high-level executive summary for the ${year} CER program.
             
-            Tone: Professional, insightful, corporate. Emphasize impact and efficiency. Do not use bullets.
+            CRITICAL DEFINITION:
+            In this context, CER stands for "Corporate Entrepreneurship Responsibility". 
+            Do NOT use "Social Responsibility". Focus on ecosystem building, youth empowerment, startups, and innovation.
+
+            Raw Data:
+            - Activities Executed: ${actCount}
+            - Beneficiaries/Participants: ${totalAud.toLocaleString()}
+            - Investment: ${totalSpent.toLocaleString()} IQD (Iraqi Dinars)
+            - Female Inclusion: ${femalePct}%
+            - Direct Zain Implementation: ${zainRate}%
+            
+            Guidelines:
+            - Write 3 sophisticated sentences.
+            - 1st Sentence: Focus on the scale of impact on the entrepreneurial ecosystem (using the Investment and Participant numbers).
+            - 2nd Sentence: Highlight inclusivity and the role of women in tech/business (using Female %).
+            - 3rd Sentence: Mention operational excellence and direct engagement (using the Implementation rate).
+            - Tone: Professional, visionary, corporate.
         `;
 
-        // UPDATED MODEL: gemini-2.5-flash
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        // Using gemini-2.0-flash (or 1.5-flash if preferred)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -665,7 +680,7 @@
         const data = await response.json();
         const aiText = data.candidates[0].content.parts[0].text;
 
-        // 3. Save to DB
+        // 4. Save to DB
         const { error } = await supabaseClient
             .from('yearly_metrics')
             .update({ executive_summary: aiText })
@@ -684,7 +699,6 @@
         btn.disabled = false;
     }
   }
-
   // ==========================================
   // 5. DISPLAY LOGIC
   // ==========================================
@@ -889,4 +903,5 @@
 </script>
 </body>
 </html>
+
 
