@@ -393,7 +393,7 @@
   // 1. CONFIGURATION
   // ==========================================
   
-  // ⚠️ PASTE YOUR KEYS
+  // ⚠️ PASTE YOUR KEYS HERE
   const supabaseUrl = 'https://xeohzbdgjgusavfonfkf.supabase.co'; 
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';
   
@@ -405,8 +405,7 @@
       year: "Year", description: "Description", is_zain: "is_zain_implemented" 
   };
   const COLS_SOCIAL = { year: "Year", reach: "Reach", engagement: "Engagement", interaction: "Interaction", impression: "Impression" };
-  const IQD_RATE = 1320;
-
+  
   // Global State
   let isAdmin = false; 
   let allLogistics = []; 
@@ -416,7 +415,7 @@
   let rawSocial = [];
   let rawRegistration = [];
   
-  // Charts
+  // Charts Instances
   let simChartInstance = null;
   let genderChartInstance = null;
   let activitiesChartInstance = null;
@@ -425,8 +424,9 @@
 
   function showToast(msg) {
       const x = document.getElementById("toast");
-      x.textContent = msg; x.className = "show";
-      setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+      x.textContent = msg; 
+      x.className = "show"; 
+      setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000);
   }
 
   // ==========================================
@@ -439,38 +439,170 @@
           document.getElementById("titleYear").textContent = selectedYear;
 
           // 1. Logistics
-          const { data: allLogs } = await supabaseClient.from('logistics_all').select('*');
+          const { data: allLogs, error: err1 } = await supabaseClient.from('logistics_all').select('*');
+          if(err1) throw err1;
+          
           allLogistics = allLogs || [];
           currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
           comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
+          
           document.getElementById("reportStart").value = `${selectedYear}-01-01`; 
           document.getElementById("reportEnd").value = `${selectedYear}-12-31`;
 
-          // 2. Metrics (Includes Summary Now)
-          const { data: metrics } = await supabaseClient.from('yearly_metrics').select('*');
+          // 2. Metrics
+          const { data: metrics, error: err2 } = await supabaseClient.from('yearly_metrics').select('*');
+          if(err2) console.warn(err2);
           yearlyMetricsArray = metrics || [];
 
           // 3. Social
           if(rawSocial.length === 0) {
               const { data: soc } = await supabaseClient.from('social_media').select('*').range(0,5000);
               rawSocial = soc || [];
+              
               const d1 = await fetchAllRows('registration', '2025');
               const d2 = await fetchAllRows('the_station_database', '2023');
               const d3 = await fetchAllRows('makers_of_baghdad_database', '2025');
               rawRegistration = [...d1, ...d2, ...d3];
+              
               populateYearFilters();
           }
 
           // UI
           renderActivityTable();
           renderMetricsTable();
-          renderKPIsAndCharts(selectedYear); // This will update the summary text
+          renderKPIsAndCharts(selectedYear);
 
-      } catch (err) { console.error("🔥 Error:", err); document.getElementById("globalError").textContent = err.message; }
+      } catch (err) { 
+          console.error("🔥 Error:", err); 
+          document.getElementById("globalError").textContent = err.message; 
+      }
   }
 
   // ==========================================
-  // 3. ADMIN-ONLY AI GENERATOR
+  // 3. CHART FUNCTIONS (Moved Up for Safety)
+  // ==========================================
+  function updateActivitiesChart() {
+      const filter = document.getElementById("actChartFilter").value; 
+      const mCounts = Array(12).fill(0);
+      
+      let dataset = (filter === "all") ? allLogistics : allLogistics.filter(row => row.Year == filter);
+      
+      dataset.forEach(row => { 
+          const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); 
+          if(d) mCounts[d.getMonth()]++; 
+      });
+      
+      if (activitiesChartInstance) activitiesChartInstance.destroy();
+      
+      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { 
+          type: "bar", 
+          data: { 
+              labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], 
+              datasets:[{ 
+                  label: filter === "all" ? "All Years" : filter, 
+                  data: mCounts, 
+                  backgroundColor:"#d946ef", 
+                  borderRadius:4 
+              }] 
+          }, 
+          options: { 
+              maintainAspectRatio: false, 
+              plugins: { legend: { display:false } }, 
+              scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } 
+          } 
+      });
+  }
+
+  function updateSimChart() {
+    const yearFilter = document.getElementById("simYearFilter").value; 
+    let zain=0, asiacell=0, korek=0;
+    
+    rawRegistration.forEach(row => { 
+        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
+        const p = String(getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"])).replace(/\D/g,"").slice(-10); 
+        if(p.startsWith("78")||p.startsWith("79")) zain++; 
+        else if(p.startsWith("77")) asiacell++; 
+        else if(p.startsWith("75")) korek++; 
+    });
+    
+    const totalS = zain + asiacell + korek; 
+    document.getElementById("kpiSimShare").textContent = (totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0) + "%";
+    
+    const colorsS = { Zain: "#d946ef", Asiacell: "#ef4444", Korek: "#3b82f6" };
+    let legendHTMLS = ""; 
+    [{l:"Zain",v:zain,c:colorsS.Zain},{l:"Asiacell",v:asiacell,c:colorsS.Asiacell},{l:"Korek",v:korek,c:colorsS.Korek}].forEach(d => { 
+        const pct = totalS > 0 ? ((d.v/totalS)*100).toFixed(1) + "%" : "0%"; 
+        legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; 
+    });
+    
+    document.getElementById("simLegend").innerHTML = legendHTMLS;
+    if (simChartInstance) simChartInstance.destroy(); 
+    simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:[colorsS.Zain, colorsS.Asiacell, colorsS.Korek], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+  }
+
+  function updateGenderChart() {
+    const yearFilter = document.getElementById("genderYearFilter").value; 
+    let male=0, female=0;
+    
+    rawRegistration.forEach(row => { 
+        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
+        const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
+        if (g.includes("female") || g === "f" || g.includes("انثى")) female++; 
+        else if (g.includes("male") || g === "m" || g.includes("ذكر")) male++; 
+    });
+    
+    const totalG = male + female; 
+    document.getElementById("kpiFemaleShare").textContent = (totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0) + "%"; 
+    document.getElementById("kpiMaleShare").textContent = (totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0) + "%";
+    
+    const colorsG = { Male: "#38bdf8", Female: "#f472b6" };
+    let legendHTMLG = ""; 
+    [{l:"Male",v:male,c:colorsG.Male},{l:"Female",v:female,c:colorsG.Female}].forEach(d => { 
+        const pct = totalG > 0 ? ((d.v/totalG)*100).toFixed(1) + "%" : "0%"; 
+        legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; 
+    });
+    
+    document.getElementById("genderLegend").innerHTML = legendHTMLG;
+    if (genderChartInstance) genderChartInstance.destroy(); 
+    genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:[colorsG.Male, colorsG.Female], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+  }
+
+  function renderGenderLineChart() {
+      const yearStats = {}; 
+      rawRegistration.forEach(row => { 
+          const y = row._derivedYear; 
+          if(!yearStats[y]) yearStats[y] = { m:0, f:0 }; 
+          const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
+          if (g.includes("female") || g === "f") yearStats[y].f++; 
+          else if (g.includes("male") || g === "m") yearStats[y].m++; 
+      });
+      
+      const years = Object.keys(yearStats).sort(); 
+      const percentages = years.map(y => { 
+          const t = yearStats[y].m + yearStats[y].f; 
+          return t > 0 ? ((yearStats[y].f / t) * 100).toFixed(1) : 0; 
+      });
+      
+      if (genderLineChartInstance) genderLineChartInstance.destroy();
+      genderLineChartInstance = new Chart(document.getElementById("genderLineChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Female %', data: percentages, borderColor: '#f472b6', backgroundColor: 'rgba(244, 114, 182, 0.2)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
+  }
+
+  function renderActivitiesTrendChart() {
+      const yearCounts = {}; 
+      allLogistics.forEach(row => { 
+          const y = row.Year; 
+          if(y) yearCounts[y] = (yearCounts[y] || 0) + 1; 
+      });
+      
+      const years = Object.keys(yearCounts).sort(); 
+      const counts = years.map(y => yearCounts[y]);
+      
+      if (activitiesTrendChartInstance) activitiesTrendChartInstance.destroy();
+      activitiesTrendChartInstance = new Chart(document.getElementById("activitiesTrendChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Activities', data: counts, borderColor: '#d946ef', backgroundColor: 'rgba(217, 70, 239, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
+  }
+
+  // ==========================================
+  // 4. ADMIN-ONLY AI GENERATOR
   // ==========================================
   async function generateAndSaveSummary() {
     if(!isAdmin) return alert("Only Admins can update the official summary.");
@@ -478,7 +610,7 @@
     const year = document.getElementById("viewYear").value;
     const btn = document.getElementById("btnGenSummary");
     
-    // 1. Check for Key (Admin Local Storage)
+    // 1. Check for Key
     let apiKey = localStorage.getItem("gemini_api_key");
     if (!apiKey) {
         apiKey = prompt("Please enter Gemini API Key (Admin Only):");
@@ -486,7 +618,7 @@
         localStorage.setItem("gemini_api_key", apiKey);
     }
 
-    // 2. Gather Data for Context
+    // 2. Data Context
     const actCount = currentLogistics.length;
     const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience]||0), 0);
     const totalSpent = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.budget]||0), 0);
@@ -500,7 +632,6 @@
     btn.innerHTML = `Running AI...`; btn.disabled = true;
 
     try {
-        // 3. Call AI
         const prompt = `
             Act as a Senior Analyst. Write a 3-4 sentence executive summary for Zain Iraq's CER program for ${year}.
             Data:
@@ -524,7 +655,7 @@
         
         const aiText = data.candidates[0].content.parts[0].text;
 
-        // 4. SAVE TO DB (The Magic Step)
+        // 3. Save to DB
         const { error } = await supabaseClient
             .from('yearly_metrics')
             .update({ executive_summary: aiText })
@@ -533,7 +664,7 @@
         if(error) throw error;
 
         showToast("Report Generated & Saved!");
-        await fetchAllData(); // Refresh to show new text
+        await fetchAllData(); 
 
     } catch (err) {
         alert("AI Error: " + err.message);
@@ -545,10 +676,10 @@
   }
 
   // ==========================================
-  // 4. DISPLAY LOGIC
+  // 5. DISPLAY LOGIC
   // ==========================================
   function renderKPIsAndCharts(selectedYear) {
-      // ... (KPI Logic same as before) ...
+      const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       
@@ -556,29 +687,45 @@
         const y = String(row[COLS_SOCIAL.year]).trim();
         if (y == selectedYear) { 
            tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
-        } else if(y == (selectedYear-1)) {
+        } else if(y == prevYear) {
            tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
         }
       });
-      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
-      setDelta("kpiSocialReachDelta", tSoc.reach, tSocPrev.reach); setDelta("kpiSocialEngagementDelta", tSoc.engagement, tSocPrev.engagement); setDelta("kpiSocialInteractionDelta", tSoc.interaction, tSocPrev.interaction); setDelta("kpiSocialImpressionDelta", tSoc.impression, tSocPrev.impression);
+      
+      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); 
+      document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
+      document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
+      document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+      
+      setDelta("kpiSocialReachDelta", tSoc.reach, tSocPrev.reach); 
+      setDelta("kpiSocialEngagementDelta", tSoc.engagement, tSocPrev.engagement); 
+      setDelta("kpiSocialInteractionDelta", tSoc.interaction, tSocPrev.interaction); 
+      setDelta("kpiSocialImpressionDelta", tSoc.impression, tSocPrev.impression);
 
       const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
       const actSelect = document.getElementById("actChartFilter");
       actSelect.innerHTML = '<option value="all">All Years</option>';
-      Array.from(uniqueYears).sort().forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = y; if(y == selectedYear) opt.selected = true; actSelect.appendChild(opt); });
+      Array.from(uniqueYears).sort().forEach(y => { 
+          const opt = document.createElement("option"); opt.value = y; opt.textContent = y; 
+          if(y == selectedYear) opt.selected = true; 
+          actSelect.appendChild(opt); 
+      });
 
-      // RENDER SUMMARY FROM DB
+      // Render Summary
       const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear);
       const summaryText = metricsRow?.executive_summary || "No executive summary generated for this year yet.";
       document.getElementById("aiSummaryText").textContent = summaryText;
 
       updateActivitiesChart();
-      applyFilters(); updateSimChart(); updateGenderChart(); renderGenderLineChart(); renderActivitiesTrendChart();
+      applyFilters(); 
+      updateSimChart(); 
+      updateGenderChart(); 
+      renderGenderLineChart(); 
+      renderActivitiesTrendChart();
   }
 
   // ==========================================
-  // 5. STANDARD FUNCTIONS (Filters, Tables, etc)
+  // 6. STANDARD FUNCTIONS
   // ==========================================
   function applyFilters() {
     const qFilter = document.getElementById("quarterFilter").value; const isAll = (qFilter === "all");
@@ -611,7 +758,7 @@
     let activities = 0, totalAudience = 0, totalBudget = 0, zainLed = 0; const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
     data.forEach(row => {
       const status = String(row[COLS_LOGISTICS.status] || "").toLowerCase(); const name = String(row[COLS_LOGISTICS.name] || "").toLowerCase();
-      if (status.includes("cancel") || status.includes("postpon")) return;
+      if (name.length < 2 || status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom");
       activities++; 
@@ -623,7 +770,7 @@
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
-  // 3. SMART GENERATORS
+  // SMART DESCRIPTION (Simple Template for Logistics)
   function autoGenerateDesc() {
     const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const dateStr = document.getElementById("inpDate").value; const aud = document.getElementById("inpAudience").value; const status = document.getElementById("inpStatus").value; const isZain = document.getElementById("inpZainImplemented").checked;
     if (!name || !city || !dateStr) { alert("Please fill in Name, City, and Date first!"); return; }
@@ -633,7 +780,7 @@
     document.getElementById("inpDesc").value = `The ${name} was held in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
   }
 
-  // 4. ADMIN TAB LOGIC
+  // ADMIN TABS
   function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -654,7 +801,7 @@
       if(error) alert("Error: " + error.message); else { showToast("Metric Saved!"); await fetchAllData(); }
   }
 
-  // 5. ACTIVITY CRUD
+  // ACTIVITY CRUD
   function startEdit(id) {
     const row = allLogistics.find(r => r.id === id); if (!row) return;
     document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || ""; document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
@@ -689,7 +836,7 @@
     });
   }
 
-  // UTILS & HELPERS
+  // UTILS
   function setDelta(id, curr, prev) {
       const el = document.getElementById(id); if(!prev || prev === 0) { el.textContent = "—"; el.className = "kpi-delta delta-neutral"; return; }
       const d = ((curr - prev) / prev) * 100; const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
@@ -716,3 +863,5 @@
 </script>
 </body>
 </html>
+
+
