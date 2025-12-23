@@ -372,21 +372,29 @@
   // Global State
   let isSignUp = false;
   let userRole = 'pending';
-  let allLogistics = []; 
-  let currentLogistics = []; 
-  let comparisonLogistics = []; 
-  let yearlyMetricsArray = []; 
-  let rawSocial = [];
-  let rawRegistration = [];
+  let currentUser = null; // Stores the logged-in user's ID
+  let allLogistics = [], currentLogistics = [], comparisonLogistics = [], yearlyMetricsArray = [], rawSocial = [], rawRegistration = [];
   
   // Charts Instances
-  let simChartInstance = null;
-  let genderChartInstance = null;
-  let activitiesChartInstance = null;
-  let genderLineChartInstance = null;
-  let activitiesTrendChartInstance = null;
+  let simChartInstance = null, genderChartInstance = null, activitiesChartInstance = null, genderLineChartInstance = null, activitiesTrendChartInstance = null;
 
-  // --- AUTH SYSTEM ---
+  // ==========================================
+  // 1. AUTH & SESSION PERSISTENCE (Fixes Refresh Issue)
+  // ==========================================
+  
+  // Run this immediately on load to check if user is already logged in
+  async function initApp() {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+          console.log("Restoring session for:", session.user.email);
+          checkUserRole(session.user.id);
+      } else {
+          // No session found, show login screen
+          document.getElementById('authScreen').style.display = 'flex';
+          document.getElementById('mainApp').style.display = 'none';
+      }
+  }
+
   function toggleAuthMode() {
       isSignUp = !isSignUp;
       document.getElementById('authTitle').innerText = isSignUp ? "Request Access" : "Sign In";
@@ -413,64 +421,55 @@
   }
 
   async function checkUserRole(uid) {
+      currentUser = { id: uid }; // Store globally
       const { data, error } = await supabaseClient.from('profiles').select('role').eq('id', uid).single();
+      
       if(error || !data) { document.getElementById('authMsg').innerText = "Profile not found. Contact Admin."; return; }
 
       if(data.role === 'pending') {
           document.getElementById('authMsg').style.color = "var(--warning)";
-          document.getElementById('authMsg').innerText = "Your account is pending Admin approval.";
+          document.getElementById('authMsg').innerText = "Account pending Admin approval.";
           await supabaseClient.auth.signOut();
       } else {
           userRole = data.role;
           document.getElementById('authScreen').style.display = 'none';
           document.getElementById('mainApp').style.display = 'block';
+          
           document.getElementById('roleBadge').innerText = userRole.toUpperCase();
           document.getElementById('roleBadge').className = `status-badge s-${userRole}`;
+          
           if(userRole === 'admin') {
-              document.getElementById('btnToggle').style.display = 'flex'; // Show manage button for admin
-              fetchUsersList();
+              document.getElementById('btnToggle').style.display = 'flex';
+              fetchUsersList(); // Load users immediately if admin
+          } else {
+              document.getElementById('btnToggle').style.display = 'none';
           }
+          
           fetchAllData();
       }
   }
 
-  async function handleLogout() { await supabaseClient.auth.signOut(); location.reload(); }
-
-  // --- ADMIN SYSTEM ---
-  function toggleAdminMode() {
-      const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
-      if(!userRole === 'admin') return;
-      if (dash.style.display === "none") {
-          dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); fetchAllData();
-      } else {
-          dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); fetchAllData();
-      }
+  async function handleLogout() {
+      await supabaseClient.auth.signOut();
+      location.reload();
   }
 
-  function switchTab(tab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      if(tab === 'activities') { document.querySelector('.tab-btn:nth-child(1)').classList.add('active'); document.getElementById('tabActivities').classList.add('active'); }
-      else if(tab === 'metrics') { document.querySelector('.tab-btn:nth-child(2)').classList.add('active'); document.getElementById('tabMetrics').classList.add('active'); }
-      else if(tab === 'users') { document.querySelector('.tab-btn:nth-child(3)').classList.add('active'); document.getElementById('tabUsers').classList.add('active'); fetchUsersList(); }
-      else { document.querySelector('.tab-btn:nth-child(4)').classList.add('active'); document.getElementById('tabAI').classList.add('active'); }
-  }
-
-  // --- USER MANAGEMENT ---
- async function fetchUsersList() {
+  // ==========================================
+  // 2. ADMIN USER MANAGEMENT (Fixes "Determining Roles")
+  // ==========================================
+  async function fetchUsersList() {
       const { data, error } = await supabaseClient.from('profiles').select('*').order('created_at', {ascending: false});
       
       if(data) {
           let html = '';
           data.forEach(user => {
-              // Skip your own account so you don't accidentally demote yourself
-              if(user.id === currentUser?.id) return; 
+              // Don't show yourself in the list
+              if(user.id === currentUser?.id) return;
 
+              // Determine actions based on role
               let actions = '';
-              
-              // LOGIC: What buttons to show based on current role
               if (user.role === 'pending') {
-                  actions = `<button class="btn-action btn-approve" onclick="updateUserRole('${user.id}','viewer')">Approve (Viewer)</button>`;
+                  actions = `<button class="btn-action btn-approve" onclick="updateUserRole('${user.id}','viewer')">Approve</button>`;
               } else if (user.role === 'viewer') {
                   actions = `
                     <button class="btn-action btn-reject" onclick="updateUserRole('${user.id}','pending')">Revoke</button>
@@ -492,9 +491,36 @@
           document.getElementById('userList').innerHTML = html || '<div style="color:#666; font-size:12px;">No other users found.</div>';
       }
   }
-  async function updateUserRole(uid, newRole) { const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', uid); if(!error) { showToast("User Updated"); fetchUsersList(); } }
 
-  // --- DATA LOADING ---
+  async function updateUserRole(uid, newRole) {
+      if(!confirm(`Change user role to ${newRole}?`)) return;
+      const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', uid);
+      if(!error) { showToast("Role Updated"); fetchUsersList(); }
+      else { alert(error.message); }
+  }
+
+  function toggleAdminMode() {
+      const dash = document.getElementById("dashboardView"); const admin = document.getElementById("adminPanel"); const btn = document.getElementById("btnToggle");
+      if(!userRole === 'admin') return;
+      if (dash.style.display === "none") {
+          dash.style.display = "block"; admin.style.display = "none"; btn.innerHTML = '<span class="material-icons">settings</span> Manage Data'; btn.classList.remove("active"); fetchAllData();
+      } else {
+          dash.style.display = "none"; admin.style.display = "block"; btn.innerHTML = '<span class="material-icons">dashboard</span> View Dashboard'; btn.classList.add("active"); fetchAllData();
+      }
+  }
+
+  function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if(tab === 'activities') { document.querySelector('.tab-btn:nth-child(1)').classList.add('active'); document.getElementById('tabActivities').classList.add('active'); }
+      else if(tab === 'metrics') { document.querySelector('.tab-btn:nth-child(2)').classList.add('active'); document.getElementById('tabMetrics').classList.add('active'); }
+      else if(tab === 'users') { document.querySelector('.tab-btn:nth-child(3)').classList.add('active'); document.getElementById('tabUsers').classList.add('active'); fetchUsersList(); }
+      else { document.querySelector('.tab-btn:nth-child(4)').classList.add('active'); document.getElementById('tabAI').classList.add('active'); }
+  }
+
+  // ==========================================
+  // 3. DATA & CHARTS
+  // ==========================================
   async function fetchAllData() {
       try {
           const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
@@ -503,7 +529,6 @@
 
           const { data: allLogs, error: err1 } = await supabaseClient.from('logistics_all').select('*');
           allLogistics = allLogs || [];
-          if(err1) console.error("Logistics Load Error (Check RLS Policies):", err1);
           
           currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
           comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
@@ -525,7 +550,7 @@
           renderMetricsTable();
           renderKPIsAndCharts(selectedYear);
 
-      } catch (err) { console.error("General Data Error:", err); }
+      } catch (err) { console.error("Data Error:", err); }
   }
 
   function renderKPIsAndCharts(selectedYear) {
@@ -692,13 +717,12 @@
     try {
         const actCount = currentLogistics.length; 
         const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience]||0), 0);
-        const prompt = `Act as Head of Innovation at Zain Iraq. Write a powerful summary for ${year} CER (Corporate Entrepreneurship). Data: ${actCount} activities, ${totalAud} participants. Focus on ROI.`;
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
-        const data = await response.json(); 
-        const aiText = data.candidates[0].content.parts[0].text;
-        await supabaseClient.from('yearly_metrics').update({ executive_summary: aiText }).eq('year', year);
-        showToast("Report Updated!"); fetchAllData();
-    } catch (err) { alert(err.message); } finally { btn.innerText = "✨ Generate Report"; btn.disabled = false; }
+        const prompt = `Act as Head of Innovation at Zain Iraq. Write a powerful summary for ${year} CER (Corporate Entrepreneurship). Data: ${act} activities, ${aud} people. Focus on ROI.`;
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+        const data = await res.json(); const txt = data.candidates[0].content.parts[0].text;
+        await supabaseClient.from('yearly_metrics').update({ executive_summary: txt }).eq('year', year);
+        showToast("Done!"); fetchAllData();
+    } catch(e) { alert(e); } finally { btn.innerText = "✨ Generate Report"; btn.disabled = false; }
   }
 
   // Utils
@@ -714,25 +738,11 @@
   function populateYearFilters() { const uniqueYears = new Set(rawRegistration.map(r=>r._derivedYear)); const s=document.getElementById("simYearFilter"); const g=document.getElementById("genderYearFilter"); const a=document.getElementById("actChartFilter"); s.innerHTML='<option value="all">All Years</option>'; g.innerHTML='<option value="all">All Years</option>'; a.innerHTML='<option value="all">All Years</option>'; uniqueYears.forEach(y => { s.add(new Option(y,y)); g.add(new Option(y,y)); a.add(new Option(y,y)); }); }
 
   const style = document.createElement('style'); style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`; document.head.appendChild(style);
-  // --- PERSISTENCE: KEEP USER LOGGED IN ---
-  async function initApp() {
-      // 1. Check if Supabase has a saved session
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      
-      if (session) {
-          // User is logged in -> Check their Role immediately
-          console.log("Session found:", session.user.email);
-          await checkUserRole(session.user.id);
-      } else {
-          // No session -> Show Login Screen
-          document.getElementById('authScreen').style.display = 'flex';
-          document.getElementById('mainApp').style.display = 'none';
-      }
-  }
-
-  // Run this when the page loads
+  
+  // INIT
   initApp();
 </script>
 </body>
 </html>
+
 
