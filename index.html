@@ -177,9 +177,23 @@
     <div id="globalError" class="error-text"></div>
 
     <div id="adminPanel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
         <h3 style="margin:0; color:#fff;">Admin Panel</h3>
         <span style="font-size:11px; color:var(--text-soft);">Authorized Access</span>
+      </div>
+
+      <div class="admin-controls" style="border: 1px solid rgba(217, 70, 239, 0.3); background: rgba(217, 70, 239, 0.05); margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <div style="color:#fff; font-weight:600; display:flex; align-items:center; gap:6px;">
+                    <span class="material-icons" style="color:#d946ef;">auto_awesome</span> AI Executive Summary
+                </div>
+                <div style="font-size:11px; color:#aaa; margin-top:4px;">Generates a professional report using AI and saves it for all users.</div>
+            </div>
+            <button id="btnGenSummary" class="btn-ai" onclick="generateAndSaveSummary()" style="padding: 8px 16px; font-size:12px;">
+                ✨ Generate New Report
+            </button>
+        </div>
       </div>
 
       <div class="admin-tabs">
@@ -243,20 +257,6 @@
       </div>
 
       <div id="tabMetrics" class="tab-content">
-        <div class="admin-controls" style="border: 1px solid rgba(217, 70, 239, 0.3); background: rgba(217, 70, 239, 0.05);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <div style="color:#fff; font-weight:600; display:flex; align-items:center; gap:6px;">
-                        <span class="material-icons" style="color:#d946ef;">auto_awesome</span> AI Executive Summary
-                    </div>
-                    <div style="font-size:11px; color:#aaa; margin-top:4px;">Generates a professional report using real AI and saves it to the database for all users to see.</div>
-                </div>
-                <button id="btnGenSummary" class="btn-ai" onclick="generateAndSaveSummary()" style="padding: 8px 16px; font-size:12px;">
-                    ✨ Generate New Report
-                </button>
-            </div>
-        </div>
-
         <div class="admin-controls">
             <div style="margin-bottom:15px; color:#d946ef; font-weight:600;">Add / Edit Year Data</div>
             <div class="form-grid">
@@ -279,13 +279,16 @@
 
     <div id="dashboardView">
         <div class="card" style="margin-bottom: 20px; background: linear-gradient(145deg, #2a1b50 0%, #0c071d 100%); border: 1px solid rgba(217, 70, 239, 0.3);">
-          <div class="card-header-row">
+          <div class="card-header-row" style="justify-content: space-between;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="material-icons" style="color:#d946ef;">auto_awesome</span>
               <div class="card-label" style="color:#fff;">Executive Summary</div>
             </div>
+            <button class="btn-ai" onclick="openReportWindow()" style="padding: 6px 12px; font-size:12px; background:#fff; color:#000;">
+                <span class="material-icons" style="font-size:14px;">open_in_new</span> Open Full Report
+            </button>
           </div>
-          <div id="aiSummaryText" style="font-size:13px; line-height:1.6; color:#e5e7eb; min-height:40px; white-space: pre-wrap;"><i>Loading summary...</i></div>
+          <div id="aiSummaryText" style="font-size:13px; line-height:1.6; color:#e5e7eb; min-height:40px; white-space: pre-wrap; margin-top:8px;"><i>Loading summary...</i></div>
         </div>
 
       <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:16px;">
@@ -780,6 +783,22 @@
     document.getElementById("inpDesc").value = `The ${name} was held in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
   }
 
+  function openReportWindow() {
+      const summaryText = document.getElementById("aiSummaryText").textContent;
+      const year = document.getElementById("viewYear").value;
+      const w = window.open("", "_blank");
+      w.document.write(`
+        <html><head><title>Executive Summary ${year}</title>
+        <style>body{font-family:sans-serif;padding:40px;line-height:1.6;color:#333;max-width:800px;margin:0 auto;} h1{color:#9333ea;border-bottom:2px solid #eee;padding-bottom:10px;} .meta{color:#666;font-size:12px;margin-bottom:30px;} p{font-size:16px;}</style>
+        </head><body>
+        <h1>CER Impact Report: ${year}</h1>
+        <div class="meta">Generated via CER Dashboard • Zain Iraq</div>
+        <p>${summaryText}</p>
+        <button onclick="window.print()" style="margin-top:20px;padding:10px 20px;background:#333;color:#fff;border:none;cursor:pointer;">Print / Save PDF</button>
+        </body></html>
+      `);
+  }
+
   // ADMIN TABS
   function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -801,7 +820,7 @@
       if(error) alert("Error: " + error.message); else { showToast("Metric Saved!"); await fetchAllData(); }
   }
 
-  // ACTIVITY CRUD
+  // 5. ACTIVITY CRUD
   function startEdit(id) {
     const row = allLogistics.find(r => r.id === id); if (!row) return;
     document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || ""; document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
@@ -863,5 +882,3 @@
 </script>
 </body>
 </html>
-
-
