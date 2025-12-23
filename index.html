@@ -15,7 +15,7 @@
     body { margin: 0; padding: 0; background: radial-gradient(circle at top left, #321b5d 0, #040011 45%, #02000a 100%); color: var(--text-main); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", Arial, sans-serif; min-height: 100vh; overflow-x: hidden; }
     .page { width: 95%; max-width: 1800px; margin: 0 auto; padding: 24px 16px 40px; }
 
-    /* --- LOGIN SCREEN (New) --- */
+    /* --- LOGIN SCREEN --- */
     #authScreen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; width: 100%; position: fixed; top: 0; left: 0; z-index: 2000; background: var(--bg-main); }
     .auth-box { background: var(--bg-card); padding: 40px; border-radius: 20px; border: 1px solid var(--border-subtle); width: 90%; max-width: 400px; text-align: center; box-shadow: 0 0 50px rgba(217,70,239,0.1); }
     .auth-logo { width: 60px; height: 60px; border-radius: 50%; background: var(--accent); margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; color: #fff; box-shadow: 0 0 20px var(--accent); }
@@ -37,9 +37,14 @@
     select { background-color: transparent; border: none; color: #f9fafb; font-size: 12px; outline: none; padding: 2px 4px; cursor: pointer; font-weight: 500; }
     select option { background-color: #0c071d; color: #fff; padding: 10px; }
     
+    /* BUTTON STYLES */
     .btn-admin { background: var(--accent); color: white; border: none; padding: 6px 16px; border-radius: 999px; font-size: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
     .btn-admin:hover { background: var(--accent-soft); }
     .btn-admin.active { background: #fff; color: #000; }
+    
+    /* NEW SIGN OUT BUTTON SHAPE */
+    .btn-signout { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 20px; border-radius: 999px; font-size: 12px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+    .btn-signout:hover { background: rgba(249,115,115,0.15); border-color: var(--danger); color: var(--danger); }
     
     .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
     .s-pending { background: rgba(250,204,21,0.1); color: #facc15; }
@@ -158,7 +163,7 @@
         </button>
       </div>
       <div class="top-controls">
-        <button class="btn-admin" onclick="handleLogout()" style="background:rgba(255,255,255,0.1);">Sign Out</button>
+        <button class="btn-signout" onclick="handleLogout()">Sign Out</button>
         <div class="pill">
           Logistics Year:
           <select id="viewYear" onchange="handleYearChange()">
@@ -345,7 +350,7 @@
   <div id="toast">Saved Successfully!</div>
 
 <script>
-  // ⚠️ PASTE YOUR KEYS HERE (Preserved from your previous file)
+  // ⚠️ PASTE YOUR KEYS HERE (Preserved)
   const supabaseUrl = 'https://xeohzbdgjgusavfonfkf.supabase.co'; 
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhlb2h6YmRnamd1c2F2Zm9uZmtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU5NjU5NzAsImV4cCI6MjA4MTU0MTk3MH0.5gO_0YgVdk9OFfrJuUrewhierc2wE7lVUst9vYd_DH4';
   
@@ -505,7 +510,9 @@
 
           // Logistics
           const { data: allLogs, error: err1 } = await supabaseClient.from('logistics_all').select('*');
-          allLogistics = allLogs || [];
+          allLogistics = allLogs || []; // If empty (due to RLS), it will just be []
+          if(err1) console.error("Logistics Error:", err1);
+          
           currentLogistics = allLogistics.filter(row => row.Year == selectedYear);
           comparisonLogistics = allLogistics.filter(row => row.Year == prevYear);
 
@@ -546,15 +553,6 @@
       document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString();
       document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString();
       document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
-
-      const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear); 
-      const summaryText = metricsRow?.executive_summary || ""; 
-      if(summaryText) {
-          document.getElementById("summaryCard").style.display = "block";
-          document.getElementById("aiSummaryText").textContent = summaryText;
-      } else {
-          document.getElementById("summaryCard").style.display = "none";
-      }
 
       updateActivitiesChart(); applyFilters(); updateSimChart(); updateGenderChart(); renderGenderLineChart(); renderActivitiesTrendChart();
   }
@@ -641,8 +639,15 @@
   }
   function updateGenderChart() {
     const yearFilter = document.getElementById("genderYearFilter").value; let male=0, female=0;
-    rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("f")) female++; else male++; });
-    document.getElementById("kpiFemaleShare").textContent = (male+female > 0 ? ((female/(male+female))*100).toFixed(1) : 0) + "%";
+    rawRegistration.forEach(row => { 
+        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
+        const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
+        if (g.includes("female") || g === "f" || g.includes("انثى")) female++; 
+        else if (g.includes("male") || g === "m" || g.includes("ذكر")) male++; 
+    });
+    const total = male + female;
+    document.getElementById("kpiMaleShare").textContent = (total > 0 ? ((male/total)*100).toFixed(1) : 0) + "%";
+    document.getElementById("kpiFemaleShare").textContent = (total > 0 ? ((female/total)*100).toFixed(1) : 0) + "%";
     if (genderChartInstance) genderChartInstance.destroy(); 
     genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:["#38bdf8", "#f472b6"], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
   }
