@@ -463,9 +463,9 @@
           }
 
           // 4. Render UI
-          renderActivityTable(); // Activity Tab
-          renderMetricsTable();  // Metrics Tab (Restored!)
-          renderKPIsAndCharts(selectedYear); // Dashboard
+          renderActivityTable();
+          renderMetricsTable();
+          renderKPIsAndCharts(selectedYear);
           
           console.log("✅ Dashboard Loaded Successfully");
 
@@ -476,7 +476,7 @@
   }
 
   // ==========================================
-  // 3. TAB & TABLE LOGIC (RESTORED)
+  // 3. TAB & TABLE LOGIC
   // ==========================================
   function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -606,10 +606,6 @@
     
     if (!name || !date) { alert("Name and Date are required!"); return; }
 
-    // Auto-calc Year
-    const dObj = new Date(date); 
-    const y = dObj.getFullYear();
-
     const rowData = { 
         [COLS_LOGISTICS.name]: name, 
         [COLS_LOGISTICS.start_date]: date, 
@@ -619,8 +615,6 @@
         [COLS_LOGISTICS.status]: document.getElementById("inpStatus").value, 
         [COLS_LOGISTICS.description]: document.getElementById("inpDesc").value, 
         [COLS_LOGISTICS.is_zain]: document.getElementById("inpZainImplemented").checked
-        // Note: 'Year' is removed to let DB handle default/calc if needed, or re-add if your DB requires it
-        // "Year": y 
     };
     
     try {
@@ -629,8 +623,6 @@
           if (error) throw error; 
           showToast("Activity Updated!"); 
       } else { 
-          // If inserting, we might need Year if not auto-generated
-          rowData["Year"] = y; 
           const { error } = await supabaseClient.from('logistics_all').insert([rowData]); 
           if (error) throw error; 
           showToast("Activity Added!"); 
@@ -660,7 +652,6 @@
 
   function renderActivityTable() {
     const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
-    // Show current year by default in table
     const sorted = [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date]));
     sorted.forEach(row => {
       const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
@@ -674,23 +665,35 @@
   function renderKPIsAndCharts(selectedYear) {
       const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
+      const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 }; // Initialize Prev container
       
+      // Calculate Social Media Totals (Current & Previous)
       rawSocial.forEach(row => { 
-        if (String(row[COLS_SOCIAL.year]).trim() == selectedYear) { 
+        const y = String(row[COLS_SOCIAL.year]).trim();
+        if (y == selectedYear) { 
            tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); 
            tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); 
            tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); 
            tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
-        } 
+        } else if (y == prevYear) {
+           tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]);
+           tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]);
+           tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]);
+           tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
+        }
       });
+
+      // Render Values
       document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); 
       document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
       document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
       document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
       
-      const dReach = calculateDelta(tSoc.reach, 0); // simplified delta
-      document.getElementById("kpiSocialReachDelta").textContent = dReach.t; 
-      document.getElementById("kpiSocialReachDelta").className = dReach.c;
+      // Render Deltas (RESTORED)
+      setDelta("kpiSocialReachDelta", tSoc.reach, tSocPrev.reach);
+      setDelta("kpiSocialEngagementDelta", tSoc.engagement, tSocPrev.engagement);
+      setDelta("kpiSocialInteractionDelta", tSoc.interaction, tSocPrev.interaction);
+      setDelta("kpiSocialImpressionDelta", tSoc.impression, tSocPrev.impression);
 
       // Activity Chart Filter
       const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
@@ -709,15 +712,12 @@
       renderGenderLineChart();
       renderActivitiesTrendChart();
   }
-
+  
   function applyFilters() {
     const qFilter = document.getElementById("quarterFilter").value; const isAll = (qFilter === "all");
     const displayMode = isAll ? "grid" : "none"; const blockMode = isAll ? "block" : "none";
-    document.getElementById("rowSocial").style.display = displayMode; 
-    document.getElementById("rowCharts").style.display = displayMode; 
-    document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
-    document.getElementById("cardJobs").style.display = blockMode; 
-    document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
+    document.getElementById("rowSocial").style.display = displayMode; document.getElementById("rowCharts").style.display = displayMode; document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
+    document.getElementById("cardJobs").style.display = blockMode; document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
 
     const mCurr = computeMetrics(currentLogistics, qFilter); 
     const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
@@ -744,13 +744,13 @@
     
     let pct = 0; if(actual > 0) pct = Math.min((spent / actual) * 100, 100);
     document.getElementById("budgetProgressBar").style.width = pct + "%";
-    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
+    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% Total Actual Spent from Actual Approved";
     
     if(planned > 0) {
         const diff = ((actual - planned) / planned) * 100;
         const sign = diff > 0 ? "+" : "";
         const color = diff > 0 ? "#f97373" : "#4ade80"; 
-        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`;
+        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% Actual Approved vs Planned`;
         document.getElementById("budgetPlanComparison").style.color = color;
     } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
@@ -760,7 +760,7 @@
     setDelta("kpiCitiesDelta", mCurr.cities, mPrev.cities);
     document.getElementById("audienceDeltaBadgeText").textContent = "vs Prev";
   }
-
+  
   function computeMetrics(data, quarterFilter) {
     let activities = 0, totalAudience = 0, totalBudget = 0, zainLed = 0; 
     const citySet = new Set(); const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
@@ -777,7 +777,12 @@
       const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom");
 
       activities++; 
-      if(!isOnline) totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
+      
+      // ONLY ADD AUDIENCE IF NOT ONLINE
+      if(!isOnline) {
+          totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
+      }
+      
       totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
       if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
       
@@ -805,7 +810,9 @@
       else { const val = amount / IQD_RATE; return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0}); }
   }
   function calculateDelta(curr, prev) {
-      return { t: "vs Prev", c: "kpi-delta delta-neutral" }; // Simplified for now
+      if (!prev || prev === 0) return { t: "—", c: "kpi-delta delta-neutral" };
+      const d = ((curr - prev) / prev) * 100; const a = d > 0 ? "▲" : d < 0 ? "▼" : ""; const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
+      return { t: `${a} ${Math.abs(d).toFixed(1)}% vs Prev`, c: `kpi-delta ${cl}` };
   }
   function handleYearChange() { fetchAllData(); }
   function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
@@ -881,14 +888,18 @@
       activitiesTrendChartInstance = new Chart(document.getElementById("activitiesTrendChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Activities', data: counts, borderColor: '#d946ef', backgroundColor: 'rgba(217, 70, 239, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
   }
 
-  // --- STYLE INJECTION ---
-  const style = document.createElement('style'); style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`; document.head.appendChild(style);
+  // --- STYLE INJECTION FOR SPIN ANIMATION ---
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  `;
+  document.head.appendChild(style);
 
-  // START
   fetchAllData();
 </script>
 </body>
 </html>
+
 
 
 
