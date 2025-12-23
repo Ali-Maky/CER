@@ -644,12 +644,41 @@
     if (simChartInstance) simChartInstance.destroy(); 
     simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:["#d946ef", "#ef4444", "#3b82f6"], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
   }
-  function updateGenderChart() {
-    const yearFilter = document.getElementById("genderYearFilter").value; let male=0, female=0;
-    rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("f")) female++; else male++; });
-    document.getElementById("kpiFemaleShare").textContent = (male+female > 0 ? ((female/(male+female))*100).toFixed(1) : 0) + "%";
+ function updateGenderChart() {
+    const yearFilter = document.getElementById("genderYearFilter").value; 
+    let male = 0, female = 0;
+    
+    // 1. Count Males and Females properly
+    rawRegistration.forEach(row => { 
+        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
+        
+        // precise checking to ignore blanks
+        const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
+        if (g.includes("female") || g === "f" || g.includes("انثى")) female++; 
+        else if (g.includes("male") || g === "m" || g.includes("ذكر")) male++; 
+    });
+
+    const total = male + female;
+    
+    // 2. Update the Text Percentages (This was missing for Male!)
+    document.getElementById("kpiMaleShare").textContent = (total > 0 ? ((male/total)*100).toFixed(1) : 0) + "%";
+    document.getElementById("kpiFemaleShare").textContent = (total > 0 ? ((female/total)*100).toFixed(1) : 0) + "%";
+
+    // 3. Update the Donut Chart
     if (genderChartInstance) genderChartInstance.destroy(); 
-    genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:["#38bdf8", "#f472b6"], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    genderChartInstance = new Chart(document.getElementById("genderChart"), { 
+        type: "doughnut", 
+        data: { 
+            labels: ["Male","Female"], 
+            datasets:[{ 
+                data:[male, female], 
+                backgroundColor:["#38bdf8", "#f472b6"], 
+                borderWidth:0, 
+                cutout: '70%' 
+            }] 
+        }, 
+        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+    });
   }
   function renderGenderLineChart() {
       const yearStats = {}; rawRegistration.forEach(row => { const y = row._derivedYear; if(!yearStats[y]) yearStats[y] = { m:0, f:0 }; const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("f")) yearStats[y].f++; else yearStats[y].m++; });
@@ -713,3 +742,4 @@
 </script>
 </body>
 </html>
+
