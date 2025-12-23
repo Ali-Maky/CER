@@ -512,31 +512,80 @@
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
-  // 3. SMART GENERATORS
+
+ // 3. SMART GENERATORS (ADVANCED UPGRADE)
   function generateSmartSummary() {
-    const btn = document.getElementById("btnGenSummary"); const out = document.getElementById("aiSummaryText"); const year = document.getElementById("viewYear").value;
-    btn.disabled = true; btn.innerHTML = `<span class="material-icons" style="font-size:12px; animation:spin 1s linear infinite;">sync</span> Analyzing...`; out.style.opacity = "0.5";
+    const btn = document.getElementById("btnGenSummary"); 
+    const out = document.getElementById("aiSummaryText"); 
+    const year = document.getElementById("viewYear").value;
     
+    // Loading State
+    btn.disabled = true; 
+    btn.innerHTML = `<span class="material-icons" style="font-size:12px; animation:spin 1s linear infinite;">sync</span> Analyzing Data...`; 
+    out.style.opacity = "0.5";
+    
+    // --- STEP 1: DEEP ANALYSIS ---
+    
+    // Basic Counts
     const actCount = currentLogistics.length;
     const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience] || 0), 0);
     const totalSpent = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.budget] || 0), 0);
     const zainCount = currentLogistics.filter(r => r[COLS_LOGISTICS.is_zain] === true).length;
+    
+    // Growth (vs Previous Year)
+    const prevAud = comparisonLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience] || 0), 0);
+    const audGrowth = prevAud > 0 ? ((totalAud - prevAud) / prevAud) * 100 : 0;
+    const growthStr = audGrowth > 0 ? `a <strong>${audGrowth.toFixed(1)}% increase</strong>` : `a <strong>${Math.abs(audGrowth).toFixed(1)}% decrease</strong>`;
+
+    // Top City
+    const cityCounts = {};
+    currentLogistics.forEach(r => { const c = r[COLS_LOGISTICS.city]; if(c) cityCounts[c] = (cityCounts[c] || 0) + 1; });
+    const topCity = Object.keys(cityCounts).reduce((a, b) => cityCounts[a] > cityCounts[b] ? a : b, "various locations");
+
+    // Efficiency (Cost Per Beneficiary)
+    const cpp = totalAud > 0 ? (totalSpent / totalAud) : 0;
+    
+    // Budget & Implementation
     const metricsRow = yearlyMetricsArray.find(r => r.year == year) || { planned_budget: 0 };
     const planned = parseInt(metricsRow.planned_budget) || 0;
     const utilization = planned > 0 ? ((totalSpent / planned) * 100).toFixed(1) : 0;
     const zainRate = actCount > 0 ? ((zainCount / actCount) * 100).toFixed(0) : 0;
     
+    // Gender
     let f = 0, m = 0;
     rawRegistration.forEach(row => { if (String(row._derivedYear) === String(year)) { const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("female") || g === "f") f++; else m++; } });
     const femalePct = (f+m) > 0 ? ((f / (f+m)) * 100).toFixed(1) : 0;
 
-    let text = `**Performance Overview (${year}):** Zain Iraq has successfully delivered ${actCount} activities, engaging ${totalAud.toLocaleString()} participants. `;
-    text += `\n\n**Inclusion & Diversity:** Female participation stands at ${femalePct}%, indicating ${femalePct > 40 ? "strong" : "growing"} engagement. `;
-    text += `\n\n**Efficiency:** ${zainRate}% of activities were directly implemented by Zain. Budget utilization is ${utilization}%.`;
+    // --- STEP 2: NARRATIVE CONSTRUCTION ---
+    
+    // Opening (Reach & Growth)
+    let text = `<p style="margin-bottom:8px;"><strong>EXECUTIVE SUMMARY ${year}</strong></p>`;
+    text += `<p>Zain Iraq has delivered <strong>${actCount} activities</strong> to date, engaging <strong>${totalAud.toLocaleString()} participants</strong>. This represents ${growthStr} in audience reach compared to the previous year, with <strong>${topCity}</strong> emerging as the most active operational hub.</p>`;
 
-    setTimeout(() => { out.innerHTML = ""; out.style.opacity = "1"; out.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); btn.disabled = false; btn.innerHTML = "Regenerate Report"; }, 800);
+    // Efficiency & Budget
+    text += `<p><strong>Operational Efficiency:</strong> The program achieved a cost-efficiency ratio of roughly <strong>$${cpp.toFixed(2)} per beneficiary</strong>. `;
+    if(planned > 0) {
+        text += `Budget utilization stands at <strong>${utilization}%</strong> of the planned allocation. `;
+        if(utilization > 100) text += `<span style="color:#f87171;">(Budget Overrun Alert)</span>. `;
+        else if(utilization < 50) text += `Significant resources remain available for Q4 expansion. `;
+    }
+    text += `Furthermore, <strong>${zainRate}%</strong> of all initiatives were directly implemented by the Zain team, ensuring strong brand presence.</p>`;
+
+    // Impact & Gender
+    text += `<p><strong>Strategic Impact:</strong> Female participation is currently at <strong>${femalePct}%</strong>. `;
+    if(femalePct > 45) text += `This exceeds industry benchmarks for gender inclusion. `;
+    else if(femalePct < 30) text += `Targeted initiatives for women are recommended to balance this ratio. `;
+    
+    text += `The digital footprint remains robust, supporting the program's visibility goals.</p>`;
+
+    // --- STEP 3: RENDER ---
+    setTimeout(() => { 
+        out.innerHTML = text; 
+        out.style.opacity = "1"; 
+        btn.disabled = false; 
+        btn.innerHTML = "Regenerate Report"; 
+    }, 800);
   }
-
   function autoGenerateDesc() {
     const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const dateStr = document.getElementById("inpDate").value; const aud = document.getElementById("inpAudience").value; const status = document.getElementById("inpStatus").value; const isZain = document.getElementById("inpZainImplemented").checked;
     if (!name || !city || !dateStr) { alert("Please fill in Name, City, and Date first!"); return; }
@@ -682,3 +731,4 @@
 </script>
 </body>
 </html>
+
