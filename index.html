@@ -132,10 +132,14 @@
     @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} } @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
     @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} } @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999; }
-    .modal-box { background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 24px; border-radius: 16px; width: 90%; max-width: 320px; }
+    .modal-box { background: var(--bg-card); border: 1px solid var(--border-subtle); padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; }
     .login-title { text-align: center; margin-bottom: 20px; }
     .modal-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
     .btn-cancel { background: transparent; color: var(--text-soft); border: none; cursor: pointer; }
+    .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .status-pending { background: rgba(250,204,21,0.1); color: #facc15; }
+    .status-approved { background: rgba(74,222,128,0.1); color: #4ade80; }
+    .status-rejected { background: rgba(248,113,113,0.1); color: #f87171; }
   </style>
 </head>
 <body>
@@ -145,6 +149,9 @@
         <div class="brand-chip"><span class="brand-dot"></span><span>CER · Zain Iraq</span></div>
         <button id="btnToggle" class="btn-admin" onclick="toggleAdminMode()">
           <span class="material-icons">settings</span> Manage Data
+        </button>
+        <button class="btn-admin" onclick="openRequestModal()" style="background: rgba(255,255,255,0.1);">
+            <span class="material-icons">person_add</span> Request Access
         </button>
       </div>
       <div class="top-controls">
@@ -192,6 +199,7 @@
       <div class="admin-tabs">
         <button class="tab-btn active" onclick="switchTab('activities')">Activities Log</button>
         <button class="tab-btn" onclick="switchTab('metrics')">Yearly Metrics</button>
+        <button class="tab-btn" onclick="switchTab('requests')">Access Requests</button>
       </div>
 
       <div id="tabActivities" class="tab-content active">
@@ -265,6 +273,15 @@
             <table id="metricsTable">
                 <thead><tr><th>Year</th><th>Jobs Created</th><th>Actual Budget (IQD)</th><th>Planned Budget (IQD)</th><th style="width:50px;">Edit</th></tr></thead>
                 <tbody id="metricsTableBody"></tbody>
+            </table>
+        </div>
+      </div>
+
+      <div id="tabRequests" class="tab-content">
+        <div class="data-table-wrapper">
+            <table id="requestsTable">
+                <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Organization</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="requestsTableBody"></tbody>
             </table>
         </div>
       </div>
@@ -379,6 +396,21 @@
       <div class="modal-actions"><button class="btn-cancel" onclick="closeLogin()">Cancel</button><button class="btn-save" onclick="checkLogin()">Login</button></div>
     </div>
   </div>
+
+  <div id="requestModal" class="modal-overlay">
+    <div class="modal-box">
+      <h3 class="login-title">Request Access</h3>
+      <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="reqName" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" id="reqEmail" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Organization</label><input type="text" id="reqOrg" class="form-input"></div>
+      <div class="form-group"><label class="form-label">Reason</label><textarea id="reqReason" class="form-input" style="height:80px;"></textarea></div>
+      <div class="modal-actions">
+          <button class="btn-cancel" onclick="document.getElementById('requestModal').style.display='none'">Cancel</button>
+          <button class="btn-save" onclick="submitRequest()">Submit Request</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast">Saved Successfully!</div>
 
 <script>
@@ -408,6 +440,7 @@
   let yearlyMetricsArray = []; 
   let rawSocial = [];
   let rawRegistration = [];
+  let accessRequests = [];
   
   // Charts Instances
   let simChartInstance = null;
@@ -473,267 +506,152 @@
   }
 
   // ==========================================
-  // 3. CHART FUNCTIONS (Moved Up for Safety)
+  // 3. ACCESS REQUESTS LOGIC
+  // ==========================================
+  function openRequestModal() { document.getElementById('requestModal').style.display = 'flex'; }
+  
+  async function submitRequest() {
+      const name = document.getElementById('reqName').value;
+      const email = document.getElementById('reqEmail').value;
+      const org = document.getElementById('reqOrg').value;
+      const reason = document.getElementById('reqReason').value;
+      
+      if(!name || !email) return alert("Name and Email are required");
+      
+      const { error } = await supabaseClient.from('access_requests').insert([{ full_name: name, email: email, organization: org, request_reason: reason }]);
+      if(error) alert("Error: " + error.message);
+      else { 
+          showToast("Request Sent!"); 
+          document.getElementById('requestModal').style.display = 'none'; 
+          // Clear inputs
+          document.getElementById('reqName').value = ""; document.getElementById('reqEmail').value = ""; document.getElementById('reqOrg').value = ""; document.getElementById('reqReason').value = "";
+      }
+  }
+
+  async function fetchRequests() {
+      if(!isAdmin) return;
+      const { data, error } = await supabaseClient.from('access_requests').select('*').order('created_at', { ascending: false });
+      if(error) console.error(error);
+      else {
+          accessRequests = data;
+          renderRequestsTable();
+      }
+  }
+
+  function renderRequestsTable() {
+      const tbody = document.getElementById("requestsTableBody");
+      tbody.innerHTML = "";
+      accessRequests.forEach(row => {
+          const d = new Date(row.created_at).toLocaleDateString();
+          const tr = document.createElement("tr");
+          let statusClass = "status-pending";
+          if(row.status === "Approved") statusClass = "status-approved";
+          if(row.status === "Rejected") statusClass = "status-rejected";
+          
+          tr.innerHTML = `
+            <td>${d}</td>
+            <td>${row.full_name}</td>
+            <td>${row.email}</td>
+            <td>${row.organization}</td>
+            <td class="desc-cell">${row.request_reason || ""}</td>
+            <td><span class="status-badge ${statusClass}">${row.status}</span></td>
+            <td>
+                <button class="btn-icon" onclick="updateRequestStatus(${row.id}, 'Approved')" title="Approve" style="color:#4ade80;"><span class="material-icons">check_circle</span></button>
+                <button class="btn-icon" onclick="updateRequestStatus(${row.id}, 'Rejected')" title="Reject" style="color:#f87171;"><span class="material-icons">cancel</span></button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+      });
+  }
+
+  async function updateRequestStatus(id, status) {
+      const { error } = await supabaseClient.from('access_requests').update({ status: status }).eq('id', id);
+      if(error) alert("Error: " + error.message);
+      else { showToast(`Request ${status}`); fetchRequests(); }
+  }
+
+  // ==========================================
+  // 4. CHART FUNCTIONS
   // ==========================================
   function updateActivitiesChart() {
       const filter = document.getElementById("actChartFilter").value; 
       const mCounts = Array(12).fill(0);
-      
       let dataset = (filter === "all") ? allLogistics : allLogistics.filter(row => row.Year == filter);
-      
-      dataset.forEach(row => { 
-          const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); 
-          if(d) mCounts[d.getMonth()]++; 
-      });
-      
+      dataset.forEach(row => { const d = parseCustomDate(row[COLS_LOGISTICS.start_date], row.Year); if(d) mCounts[d.getMonth()]++; });
       if (activitiesChartInstance) activitiesChartInstance.destroy();
-      
-      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { 
-          type: "bar", 
-          data: { 
-              labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], 
-              datasets:[{ 
-                  label: filter === "all" ? "All Years" : filter, 
-                  data: mCounts, 
-                  backgroundColor:"#d946ef", 
-                  borderRadius:4 
-              }] 
-          }, 
-          options: { 
-              maintainAspectRatio: false, 
-              plugins: { legend: { display:false } }, 
-              scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } 
-          } 
-      });
+      activitiesChartInstance = new Chart(document.getElementById("activitiesChart"), { type: "bar", data: { labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], datasets:[{ label: filter === "all" ? "All Years" : filter, data: mCounts, backgroundColor:"#d946ef", borderRadius:4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display:false } }, scales:{ y:{ grid:{ color:"#333"} }, x:{ grid:{ display:false } } } } });
   }
-
   function updateSimChart() {
-    const yearFilter = document.getElementById("simYearFilter").value; 
-    let zain=0, asiacell=0, korek=0;
-    
-    rawRegistration.forEach(row => { 
-        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
-        const p = String(getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"])).replace(/\D/g,"").slice(-10); 
-        if(p.startsWith("78")||p.startsWith("79")) zain++; 
-        else if(p.startsWith("77")) asiacell++; 
-        else if(p.startsWith("75")) korek++; 
-    });
-    
-    const totalS = zain + asiacell + korek; 
-    document.getElementById("kpiSimShare").textContent = (totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0) + "%";
-    
+    const yearFilter = document.getElementById("simYearFilter").value; let zain=0, asiacell=0, korek=0;
+    rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const p = String(getSmartValue(row, ["Phone", "Mobile", "Number", "phone_number"])).replace(/\D/g,"").slice(-10); if(p.startsWith("78")||p.startsWith("79")) zain++; else if(p.startsWith("77")) asiacell++; else if(p.startsWith("75")) korek++; });
+    const totalS = zain + asiacell + korek; document.getElementById("kpiSimShare").textContent = (totalS > 0 ? ((zain/totalS)*100).toFixed(1) : 0) + "%";
     const colorsS = { Zain: "#d946ef", Asiacell: "#ef4444", Korek: "#3b82f6" };
-    let legendHTMLS = ""; 
-    [{l:"Zain",v:zain,c:colorsS.Zain},{l:"Asiacell",v:asiacell,c:colorsS.Asiacell},{l:"Korek",v:korek,c:colorsS.Korek}].forEach(d => { 
-        const pct = totalS > 0 ? ((d.v/totalS)*100).toFixed(1) + "%" : "0%"; 
-        legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; 
-    });
-    
+    let legendHTMLS = ""; [{l:"Zain",v:zain,c:colorsS.Zain},{l:"Asiacell",v:asiacell,c:colorsS.Asiacell},{l:"Korek",v:korek,c:colorsS.Korek}].forEach(d => { const pct = totalS > 0 ? ((d.v/totalS)*100).toFixed(1) + "%" : "0%"; legendHTMLS += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; });
     document.getElementById("simLegend").innerHTML = legendHTMLS;
     if (simChartInstance) simChartInstance.destroy(); 
     simChartInstance = new Chart(document.getElementById("simChart"), { type: "doughnut", data: { labels: ["Zain","Asiacell","Korek"], datasets:[{ data:[zain, asiacell, korek], backgroundColor:[colorsS.Zain, colorsS.Asiacell, colorsS.Korek], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
   }
-
   function updateGenderChart() {
-    const yearFilter = document.getElementById("genderYearFilter").value; 
-    let male=0, female=0;
-    
-    rawRegistration.forEach(row => { 
-        if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; 
-        const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
-        if (g.includes("female") || g === "f" || g.includes("انثى")) female++; 
-        else if (g.includes("male") || g === "m" || g.includes("ذكر")) male++; 
-    });
-    
-    const totalG = male + female; 
-    document.getElementById("kpiFemaleShare").textContent = (totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0) + "%"; 
-    document.getElementById("kpiMaleShare").textContent = (totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0) + "%";
-    
+    const yearFilter = document.getElementById("genderYearFilter").value; let male=0, female=0;
+    rawRegistration.forEach(row => { if (yearFilter !== "all" && row._derivedYear !== yearFilter) return; const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("female") || g === "f" || g.includes("انثى")) female++; else if (g.includes("male") || g === "m" || g.includes("ذكر")) male++; });
+    const totalG = male + female; document.getElementById("kpiFemaleShare").textContent = (totalG > 0 ? ((female/totalG)*100).toFixed(1) : 0) + "%"; document.getElementById("kpiMaleShare").textContent = (totalG > 0 ? ((male/totalG)*100).toFixed(1) : 0) + "%";
     const colorsG = { Male: "#38bdf8", Female: "#f472b6" };
-    let legendHTMLG = ""; 
-    [{l:"Male",v:male,c:colorsG.Male},{l:"Female",v:female,c:colorsG.Female}].forEach(d => { 
-        const pct = totalG > 0 ? ((d.v/totalG)*100).toFixed(1) + "%" : "0%"; 
-        legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; 
-    });
-    
+    let legendHTMLG = ""; [{l:"Male",v:male,c:colorsG.Male},{l:"Female",v:female,c:colorsG.Female}].forEach(d => { const pct = totalG > 0 ? ((d.v/totalG)*100).toFixed(1) + "%" : "0%"; legendHTMLG += `<div class="legend-item"><div class="legend-left"><span class="legend-dot" style="background:${d.c}"></span> ${d.l}</div><div class="legend-right"><span class="legend-pct">${pct}</span><span class="legend-count">${d.v.toLocaleString()}</span></div></div>`; });
     document.getElementById("genderLegend").innerHTML = legendHTMLG;
     if (genderChartInstance) genderChartInstance.destroy(); 
     genderChartInstance = new Chart(document.getElementById("genderChart"), { type: "doughnut", data: { labels: ["Male","Female"], datasets:[{ data:[male, female], backgroundColor:[colorsG.Male, colorsG.Female], borderWidth:0, cutout: '70%' }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } } } });
   }
-
   function renderGenderLineChart() {
-      const yearStats = {}; 
-      rawRegistration.forEach(row => { 
-          const y = row._derivedYear; 
-          if(!yearStats[y]) yearStats[y] = { m:0, f:0 }; 
-          const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); 
-          if (g.includes("female") || g === "f") yearStats[y].f++; 
-          else if (g.includes("male") || g === "m") yearStats[y].m++; 
-      });
-      
-      const years = Object.keys(yearStats).sort(); 
-      const percentages = years.map(y => { 
-          const t = yearStats[y].m + yearStats[y].f; 
-          return t > 0 ? ((yearStats[y].f / t) * 100).toFixed(1) : 0; 
-      });
-      
+      const yearStats = {}; rawRegistration.forEach(row => { const y = row._derivedYear; if(!yearStats[y]) yearStats[y] = { m:0, f:0 }; const g = String(getSmartValue(row, ["Gender", "Sex"])).toLowerCase(); if (g.includes("female") || g === "f") yearStats[y].f++; else if (g.includes("male") || g === "m") yearStats[y].m++; });
+      const years = Object.keys(yearStats).sort(); const percentages = years.map(y => { const t = yearStats[y].m + yearStats[y].f; return t > 0 ? ((yearStats[y].f / t) * 100).toFixed(1) : 0; });
       if (genderLineChartInstance) genderLineChartInstance.destroy();
       genderLineChartInstance = new Chart(document.getElementById("genderLineChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Female %', data: percentages, borderColor: '#f472b6', backgroundColor: 'rgba(244, 114, 182, 0.2)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
   }
-
   function renderActivitiesTrendChart() {
-      const yearCounts = {}; 
-      allLogistics.forEach(row => { 
-          const y = row.Year; 
-          if(y) yearCounts[y] = (yearCounts[y] || 0) + 1; 
-      });
-      
-      const years = Object.keys(yearCounts).sort(); 
-      const counts = years.map(y => yearCounts[y]);
-      
+      const yearCounts = {}; allLogistics.forEach(row => { const y = row.Year; if(y) yearCounts[y] = (yearCounts[y] || 0) + 1; });
+      const years = Object.keys(yearCounts).sort(); const counts = years.map(y => yearCounts[y]);
       if (activitiesTrendChartInstance) activitiesTrendChartInstance.destroy();
       activitiesTrendChartInstance = new Chart(document.getElementById("activitiesTrendChart"), { type: 'line', data: { labels: years, datasets: [{ label: 'Activities', data: counts, borderColor: '#d946ef', backgroundColor: 'rgba(217, 70, 239, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#333' } }, x: { grid: { display: false } } } } });
   }
 
   // ==========================================
-  // 4. ADMIN-ONLY AI GENERATOR
+  // 5. ADMIN AI GENERATOR
   // ==========================================
   async function generateAndSaveSummary() {
     if(!isAdmin) return alert("Only Admins can update the official summary.");
-    
     const year = document.getElementById("viewYear").value;
     const btn = document.getElementById("btnGenSummary");
-    
-    // 1. Check for Key
     let apiKey = localStorage.getItem("gemini_api_key");
-    if (!apiKey) {
-        apiKey = prompt("Please enter Gemini API Key (Admin Only):");
-        if (!apiKey) return;
-        localStorage.setItem("gemini_api_key", apiKey);
-    }
-
-    // 2. Data Context
-    const actCount = currentLogistics.length;
-    const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience]||0), 0);
-    const totalSpent = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.budget]||0), 0);
-    const zainCount = currentLogistics.filter(r => r[COLS_LOGISTICS.is_zain]===true).length;
-    const zainRate = actCount > 0 ? ((zainCount/actCount)*100).toFixed(0) : 0;
-    
-    let f=0, m=0;
-    rawRegistration.forEach(row => { if(String(row._derivedYear) === String(year)){ const g=String(getSmartValue(row, ["Gender","Sex"])).toLowerCase(); if(g.includes("female")||g==="f") f++; else m++; }});
-    const femalePct = (f+m)>0 ? ((f/(f+m))*100).toFixed(1) : 0;
-
+    if (!apiKey) { apiKey = prompt("Please enter Gemini API Key (Admin Only):"); if (!apiKey) return; localStorage.setItem("gemini_api_key", apiKey); }
+    const actCount = currentLogistics.length; const totalAud = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.audience]||0), 0); const totalSpent = currentLogistics.reduce((acc, r) => acc + toNumberSmart(r[COLS_LOGISTICS.budget]||0), 0); const zainCount = currentLogistics.filter(r => r[COLS_LOGISTICS.is_zain]===true).length; const zainRate = actCount > 0 ? ((zainCount/actCount)*100).toFixed(0) : 0; let f=0, m=0; rawRegistration.forEach(row => { if(String(row._derivedYear) === String(year)){ const g=String(getSmartValue(row, ["Gender","Sex"])).toLowerCase(); if(g.includes("female")||g==="f") f++; else m++; }}); const femalePct = (f+m)>0 ? ((f/(f+m))*100).toFixed(1) : 0;
     btn.innerHTML = `Running AI...`; btn.disabled = true;
-
     try {
-        const prompt = `
-            Act as the Head of Innovation & Entrepreneurship at Zain Iraq. 
-            Write a powerful, high-level executive summary for the ${year} CER program.
-            
-            CRITICAL DEFINITION:
-            In this context, CER stands for "Corporate Entrepreneurship Responsibility". 
-            Do NOT use "Social Responsibility". Focus on ecosystem building, youth empowerment, startups, and innovation.
-
-            Raw Data:
-            - Activities Executed: ${actCount}
-            - Beneficiaries/Participants: ${totalAud.toLocaleString()}
-            - Investment: ${totalSpent.toLocaleString()} IQD (Iraqi Dinars)
-            - Female Inclusion: ${femalePct}%
-            - Direct Zain Implementation: ${zainRate}%
-            
-            Guidelines:
-            - Write 3 sophisticated sentences.
-            - 1st Sentence: Focus on the scale of impact on the entrepreneurial ecosystem (using the Investment and Participant numbers).
-            - 2nd Sentence: Highlight inclusivity and the role of women in tech/business (using Female %).
-            - 3rd Sentence: Mention operational excellence and direct engagement (using the Implementation rate).
-            - Tone: Professional, visionary, corporate.
-        `;
-
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || "Unknown AI Error");
-        }
-
-        const data = await response.json();
-        const aiText = data.candidates[0].content.parts[0].text;
-
-        // 3. Save to DB
-        const { error } = await supabaseClient
-            .from('yearly_metrics')
-            .update({ executive_summary: aiText })
-            .eq('year', year);
-
-        if(error) throw error;
-
-        showToast("Report Generated & Saved!");
-        await fetchAllData(); 
-
-    } catch (err) {
-        alert("AI Error: " + err.message);
-        if(err.message.includes("key") || err.message.includes("403")) localStorage.removeItem("gemini_api_key");
-    } finally {
-        btn.innerHTML = "✨ Generate New Report";
-        btn.disabled = false;
-    }
+        const prompt = `Act as the Head of Innovation & Entrepreneurship at Zain Iraq. Write a powerful, high-level executive summary for the ${year} CER program. CRITICAL DEFINITION: In this context, CER stands for "Corporate Entrepreneurship Responsibility". Do NOT use "Social Responsibility". Focus on ecosystem building, youth empowerment, startups, and innovation. Raw Data: - Activities Executed: ${actCount} - Beneficiaries/Participants: ${totalAud.toLocaleString()} - Investment: ${totalSpent.toLocaleString()} IQD (Iraqi Dinars) - Female Inclusion: ${femalePct}% - Direct Zain Implementation: ${zainRate}% Guidelines: - Write 3 sophisticated sentences. - 1st Sentence: Focus on the scale of impact on the entrepreneurial ecosystem. - 2nd Sentence: Highlight inclusivity and the role of women in tech/business. - 3rd Sentence: Mention operational excellence and direct engagement. - Tone: Professional, visionary, corporate.`;
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+        if (!response.ok) { const errData = await response.json(); throw new Error(errData.error?.message || "Unknown AI Error"); }
+        const data = await response.json(); const aiText = data.candidates[0].content.parts[0].text;
+        const { error } = await supabaseClient.from('yearly_metrics').update({ executive_summary: aiText }).eq('year', year);
+        if(error) throw error; showToast("Report Generated & Saved!"); await fetchAllData(); 
+    } catch (err) { alert("AI Error: " + err.message); if(err.message.includes("key") || err.message.includes("403")) localStorage.removeItem("gemini_api_key"); } finally { btn.innerHTML = "✨ Generate New Report"; btn.disabled = false; }
   }
 
   // ==========================================
-  // 5. DISPLAY LOGIC
+  // 6. DISPLAY LOGIC
   // ==========================================
   function renderKPIsAndCharts(selectedYear) {
       const prevYear = selectedYear - 1;
       const tSoc = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
       const tSocPrev = { reach: 0, engagement: 0, interaction: 0, impression: 0 };
-      
-      rawSocial.forEach(row => { 
-        const y = String(row[COLS_SOCIAL.year]).trim();
-        if (y == selectedYear) { 
-           tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); 
-        } else if(y == prevYear) {
-           tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]);
-        }
-      });
-      
-      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); 
-      document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); 
-      document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); 
-      document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
-      
-      setDelta("kpiSocialReachDelta", tSoc.reach, tSocPrev.reach); 
-      setDelta("kpiSocialEngagementDelta", tSoc.engagement, tSocPrev.engagement); 
-      setDelta("kpiSocialInteractionDelta", tSoc.interaction, tSocPrev.interaction); 
-      setDelta("kpiSocialImpressionDelta", tSoc.impression, tSocPrev.impression);
-
-      const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y));
-      const actSelect = document.getElementById("actChartFilter");
-      actSelect.innerHTML = '<option value="all">All Years</option>';
-      Array.from(uniqueYears).sort().forEach(y => { 
-          const opt = document.createElement("option"); opt.value = y; opt.textContent = y; 
-          if(y == selectedYear) opt.selected = true; 
-          actSelect.appendChild(opt); 
-      });
-
-      // Render Summary Logic (Read-Only)
-      const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear);
-      const summaryText = metricsRow?.executive_summary || "";
-      document.getElementById("aiSummaryText").textContent = summaryText;
-
-      updateActivitiesChart();
-      applyFilters(); 
-      updateSimChart(); 
-      updateGenderChart(); 
-      renderGenderLineChart(); 
-      renderActivitiesTrendChart();
+      rawSocial.forEach(row => { const y = String(row[COLS_SOCIAL.year]).trim(); if (y == selectedYear) { tSoc.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSoc.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSoc.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSoc.impression += toNumberSmart(row[COLS_SOCIAL.impression]); } else if(y == prevYear) { tSocPrev.reach += toNumberSmart(row[COLS_SOCIAL.reach]); tSocPrev.engagement += toNumberSmart(row[COLS_SOCIAL.engagement]); tSocPrev.interaction += toNumberSmart(row[COLS_SOCIAL.interaction]); tSocPrev.impression += toNumberSmart(row[COLS_SOCIAL.impression]); } });
+      document.getElementById("kpiSocialReach").textContent = tSoc.reach.toLocaleString(); document.getElementById("kpiSocialEngagement").textContent = tSoc.engagement.toLocaleString(); document.getElementById("kpiSocialInteraction").textContent = tSoc.interaction.toLocaleString(); document.getElementById("kpiSocialImpression").textContent = tSoc.impression.toLocaleString();
+      setDelta("kpiSocialReachDelta", tSoc.reach, tSocPrev.reach); setDelta("kpiSocialEngagementDelta", tSoc.engagement, tSocPrev.engagement); setDelta("kpiSocialInteractionDelta", tSoc.interaction, tSocPrev.interaction); setDelta("kpiSocialImpressionDelta", tSoc.impression, tSocPrev.impression);
+      const uniqueYears = new Set(allLogistics.map(r => r.Year).filter(y => y)); const actSelect = document.getElementById("actChartFilter"); actSelect.innerHTML = '<option value="all">All Years</option>'; Array.from(uniqueYears).sort().forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = y; if(y == selectedYear) opt.selected = true; actSelect.appendChild(opt); });
+      const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear); const summaryText = metricsRow?.executive_summary || ""; document.getElementById("aiSummaryText").textContent = summaryText;
+      updateActivitiesChart(); applyFilters(); updateSimChart(); updateGenderChart(); renderGenderLineChart(); renderActivitiesTrendChart();
   }
 
   // ==========================================
-  // 6. STANDARD FUNCTIONS
+  // 7. STANDARD FUNCTIONS
   // ==========================================
   function applyFilters() {
     const qFilter = document.getElementById("quarterFilter").value; const isAll = (qFilter === "all");
@@ -741,36 +659,19 @@
     document.getElementById("rowSocial").style.display = displayMode; document.getElementById("rowCharts").style.display = displayMode; document.getElementById("rowCharts2").style.display = isAll ? "block" : "none"; 
     document.getElementById("cardJobs").style.display = blockMode; document.getElementById("cardBudget").style.gridColumn = isAll ? "span 2" : "span 4";
     
-    // Toggle Trend Charts based on Quarter selection
+    // SMART HIDING OF TREND CHARTS
     const trendRow = document.getElementById("trendChartsRow");
     if(trendRow) trendRow.style.display = isAll ? "grid" : "none";
 
     const mCurr = computeMetrics(currentLogistics, qFilter); const mPrev = (comparisonLogistics.length > 0) ? computeMetrics(comparisonLogistics, qFilter) : { activities:0, audience:0, budget:0, cities:0 };
-    document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); 
-    document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); 
-    document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
-    const zainRate = mCurr.activities > 0 ? ((mCurr.zainLed / mCurr.activities) * 100).toFixed(1) : 0;
-    document.getElementById("kpiZainRate").textContent = zainRate + "%";
-
-    // Currency Formatting (Reads from Card Selector)
-    const currency = document.getElementById("currencySelectorCard").value;
-    const spentVal = mCurr.budget;
-    document.getElementById("kpiBudget").textContent = formatMoney(spentVal, currency);
-
-    const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025;
-    const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear) || { jobs_created:0, actual_budget:0, planned_budget:0 };
-    document.getElementById("kpiJobs").textContent = parseInt(metricsRow.jobs_created).toLocaleString();
-    
-    const actual = parseInt(metricsRow.actual_budget) || 0; 
-    const planned = parseInt(metricsRow.planned_budget) || 0;
-    
-    document.getElementById("kpiBudgetActual").textContent = formatMoney(actual, currency); 
-    document.getElementById("kpiBudgetPlanned").textContent = formatMoney(planned, currency);
-    
-    let pct = 0; if(actual > 0) pct = Math.min((spentVal / actual) * 100, 100);
-    document.getElementById("budgetProgressBar").style.width = pct + "%"; document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
+    document.getElementById("kpiActivities").textContent = mCurr.activities.toLocaleString(); document.getElementById("kpiAudience").textContent = mCurr.audience.toLocaleString(); document.getElementById("kpiCities").textContent = mCurr.cities.toLocaleString();
+    const zainRate = mCurr.activities > 0 ? ((mCurr.zainLed / mCurr.activities) * 100).toFixed(1) : 0; document.getElementById("kpiZainRate").textContent = zainRate + "%";
+    const currency = document.getElementById("currencySelectorCard").value; const spentVal = mCurr.budget; document.getElementById("kpiBudget").textContent = formatMoney(spentVal, currency);
+    const selectedYear = parseInt(document.getElementById("viewYear").value) || 2025; const metricsRow = yearlyMetricsArray.find(r => r.year == selectedYear) || { jobs_created:0, actual_budget:0, planned_budget:0 }; document.getElementById("kpiJobs").textContent = parseInt(metricsRow.jobs_created).toLocaleString();
+    const actual = parseInt(metricsRow.actual_budget) || 0; const planned = parseInt(metricsRow.planned_budget) || 0;
+    document.getElementById("kpiBudgetActual").textContent = formatMoney(actual, currency); document.getElementById("kpiBudgetPlanned").textContent = formatMoney(planned, currency);
+    let pct = 0; if(actual > 0) pct = Math.min((spentVal / actual) * 100, 100); document.getElementById("budgetProgressBar").style.width = pct + "%"; document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
     if(planned > 0) { const diff = ((actual - planned) / planned) * 100; const sign = diff > 0 ? "+" : ""; const color = diff > 0 ? "#f97373" : "#4ade80"; document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`; document.getElementById("budgetPlanComparison").style.color = color; } else { document.getElementById("budgetPlanComparison").textContent = ""; }
-
     setDelta("kpiActivitiesDelta", mCurr.activities, mPrev.activities); setDelta("kpiAudienceDelta", mCurr.audience, mPrev.audience); setDelta("kpiBudgetDelta", mCurr.budget, mPrev.budget); setDelta("kpiCitiesDelta", mCurr.cities, mPrev.cities);
     document.getElementById("audienceDeltaBadgeText").textContent = "vs Prev";
   }
@@ -782,88 +683,33 @@
       if (name.length < 2 || status.includes("cancel") || status.includes("postpon")) return;
       if (quarterFilter !== "all") { const dObj = parseCustomDate(row[COLS_LOGISTICS.start_date], selectedYear); if (!dObj || getQuarter(dObj) !== quarterFilter) return; }
       const city = String(row[COLS_LOGISTICS.city] || "").trim().toLowerCase(); const isOnline = city.includes("online") || city.includes("virtual") || city.includes("zoom");
-      activities++; 
-      if(!isOnline) totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]);
-      totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]);
-      if (row[COLS_LOGISTICS.is_zain] === true) zainLed++;
-      if (city && city !== "city" && !isOnline) citySet.add(city);
+      activities++; if(!isOnline) totalAudience += toNumberSmart(row[COLS_LOGISTICS.audience]); totalBudget += toNumberSmart(row[COLS_LOGISTICS.budget]); if (row[COLS_LOGISTICS.is_zain] === true) zainLed++; if (city && city !== "city" && !isOnline) citySet.add(city);
     }); 
     return { activities, audience: totalAudience, budget: totalBudget, cities: citySet.size, zainLed };
   }
 
-  // SMART DESCRIPTION (Simple Template for Logistics)
   function autoGenerateDesc() {
     const name = document.getElementById("inpName").value; const city = document.getElementById("inpCity").value; const dateStr = document.getElementById("inpDate").value; const aud = document.getElementById("inpAudience").value; const status = document.getElementById("inpStatus").value; const isZain = document.getElementById("inpZainImplemented").checked;
     if (!name || !city || !dateStr) { alert("Please fill in Name, City, and Date first!"); return; }
-    const audienceNum = parseInt(aud) || 0;
-    let scaleText = audienceNum > 100 ? `engaging ${audienceNum} attendees` : `with ${audienceNum} participants`;
-    let contextText = isZain ? "Directly implemented by Zain Iraq." : "Supported through collaboration.";
-    document.getElementById("inpDesc").value = `The ${name} was held in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
+    const audienceNum = parseInt(aud) || 0; let scaleText = audienceNum > 100 ? `engaging ${audienceNum} attendees` : `with ${audienceNum} participants`; let contextText = isZain ? "Directly implemented by Zain Iraq." : "Supported through collaboration."; document.getElementById("inpDesc").value = `The ${name} was held in ${city} on ${dateStr}, ${scaleText}. ${contextText}`;
   }
 
-  // ADMIN TABS
   function switchTab(tab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       if(tab === 'activities') { document.querySelector('.tab-btn:nth-child(1)').classList.add('active'); document.getElementById('tabActivities').classList.add('active'); } 
-      else { document.querySelector('.tab-btn:nth-child(2)').classList.add('active'); document.getElementById('tabMetrics').classList.add('active'); }
+      else if(tab === 'metrics') { document.querySelector('.tab-btn:nth-child(2)').classList.add('active'); document.getElementById('tabMetrics').classList.add('active'); }
+      else { document.querySelector('.tab-btn:nth-child(3)').classList.add('active'); document.getElementById('tabRequests').classList.add('active'); fetchRequests(); }
   }
-  function renderMetricsTable() {
-      const tbody = document.getElementById("metricsTableBody"); if(!tbody) return; tbody.innerHTML = "";
-      [...yearlyMetricsArray].sort((a,b) => b.year - a.year).forEach(row => {
-          const tr = document.createElement("tr"); tr.innerHTML = `<td><strong>${row.year}</strong></td><td>${Number(row.jobs_created).toLocaleString()}</td><td>${Number(row.actual_budget).toLocaleString()}</td><td>${Number(row.planned_budget).toLocaleString()}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button></td>`; tbody.appendChild(tr);
-      });
-  }
+  function renderMetricsTable() { const tbody = document.getElementById("metricsTableBody"); if(!tbody) return; tbody.innerHTML = ""; [...yearlyMetricsArray].sort((a,b) => b.year - a.year).forEach(row => { const tr = document.createElement("tr"); tr.innerHTML = `<td><strong>${row.year}</strong></td><td>${Number(row.jobs_created).toLocaleString()}</td><td>${Number(row.actual_budget).toLocaleString()}</td><td>${Number(row.planned_budget).toLocaleString()}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="editMetric(${row.year})" title="Edit"><span class="material-icons">edit</span></button></td>`; tbody.appendChild(tr); }); }
   function editMetric(year) { const r = yearlyMetricsArray.find(x => x.year == year); if(r) { document.getElementById("inpMetaYear").value = r.year; document.getElementById("inpMetaJobs").value = r.jobs_created; document.getElementById("inpMetaActual").value = r.actual_budget; document.getElementById("inpMetaPlanned").value = r.planned_budget; window.scrollTo({top:0,behavior:'smooth'}); } }
-  async function saveMetricRow() {
-      const year = document.getElementById("inpMetaYear").value; const jobs = document.getElementById("inpMetaJobs").value; const actual = document.getElementById("inpMetaActual").value; const planned = document.getElementById("inpMetaPlanned").value;
-      if(!year) return alert("Year is required");
-      const { error } = await supabaseClient.from('yearly_metrics').upsert({ year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0 });
-      if(error) alert("Error: " + error.message); else { showToast("Metric Saved!"); await fetchAllData(); }
-  }
-
-  // 5. ACTIVITY CRUD
-  function startEdit(id) {
-    const row = allLogistics.find(r => r.id === id); if (!row) return;
-    document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || ""; document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; 
-    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update");
-    document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"});
-  }
-  function cancelEdit() {
-    document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; document.getElementById("inpZainImplemented").checked = false;
-    const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none";
-  }
-  async function saveActivity() {
-    const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value;
-    if (!name || !date) { alert("Name and Date are required!"); return; }
-    const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: document.getElementById("inpCity").value, [COLS_LOGISTICS.audience]: document.getElementById("inpAudience").value, [COLS_LOGISTICS.budget]: document.getElementById("inpBudget").value, [COLS_LOGISTICS.status]: document.getElementById("inpStatus").value, [COLS_LOGISTICS.description]: document.getElementById("inpDesc").value, [COLS_LOGISTICS.is_zain]: document.getElementById("inpZainImplemented").checked };
-    try {
-      if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; showToast("Activity Updated!"); } 
-      else { rowData["Year"] = new Date(date).getFullYear(); const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; showToast("Activity Added!"); }
-      cancelEdit(); await fetchAllData();
-    } catch (err) { console.error(err); alert("Error saving: " + err.message); }
-  }
-  async function toggleZain(id, isChecked) {
-      const row = allLogistics.find(r => r.id === id); if(row) row[COLS_LOGISTICS.is_zain] = isChecked;
-      const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id);
-      if(error) { alert("Error saving: " + error.message); fetchAllData(); } else { showToast("Status updated!"); }
-  }
+  async function saveMetricRow() { const year = document.getElementById("inpMetaYear").value; const jobs = document.getElementById("inpMetaJobs").value; const actual = document.getElementById("inpMetaActual").value; const planned = document.getElementById("inpMetaPlanned").value; if(!year) return alert("Year is required"); const { error } = await supabaseClient.from('yearly_metrics').upsert({ year: year, jobs_created: jobs||0, actual_budget: actual||0, planned_budget: planned||0 }); if(error) alert("Error: " + error.message); else { showToast("Metric Saved!"); await fetchAllData(); } }
+  function startEdit(id) { const row = allLogistics.find(r => r.id === id); if (!row) return; document.getElementById("editId").value = id; document.getElementById("inpName").value = row[COLS_LOGISTICS.name]; document.getElementById("inpDate").value = row[COLS_LOGISTICS.start_date]; document.getElementById("inpCity").value = row[COLS_LOGISTICS.city]; document.getElementById("inpStatus").value = row[COLS_LOGISTICS.status] || "Completed"; document.getElementById("inpAudience").value = row[COLS_LOGISTICS.audience]; document.getElementById("inpBudget").value = row[COLS_LOGISTICS.budget]; document.getElementById("inpDesc").value = row[COLS_LOGISTICS.description] || ""; document.getElementById("inpZainImplemented").checked = row[COLS_LOGISTICS.is_zain] === true; const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Update Activity"; btnSave.classList.remove("btn-save"); btnSave.classList.add("btn-update"); document.getElementById("btnCancelEdit").style.display = "block"; document.getElementById("entryForm").scrollIntoView({behavior: "smooth"}); }
+  function cancelEdit() { document.getElementById("editId").value = ""; document.getElementById("inpName").value = ""; document.getElementById("inpDate").value = ""; document.getElementById("inpCity").value = ""; document.getElementById("inpAudience").value = ""; document.getElementById("inpBudget").value = ""; document.getElementById("inpDesc").value = ""; document.getElementById("inpZainImplemented").checked = false; const btnSave = document.getElementById("btnSave"); btnSave.textContent = "Add Row to DB"; btnSave.classList.remove("btn-update"); btnSave.classList.add("btn-save"); document.getElementById("btnCancelEdit").style.display = "none"; }
+  async function saveActivity() { const editId = document.getElementById("editId").value; const name = document.getElementById("inpName").value; const date = document.getElementById("inpDate").value; if (!name || !date) { alert("Name and Date are required!"); return; } const rowData = { [COLS_LOGISTICS.name]: name, [COLS_LOGISTICS.start_date]: date, [COLS_LOGISTICS.city]: document.getElementById("inpCity").value, [COLS_LOGISTICS.audience]: document.getElementById("inpAudience").value, [COLS_LOGISTICS.budget]: document.getElementById("inpBudget").value, [COLS_LOGISTICS.status]: document.getElementById("inpStatus").value, [COLS_LOGISTICS.description]: document.getElementById("inpDesc").value, [COLS_LOGISTICS.is_zain]: document.getElementById("inpZainImplemented").checked }; try { if (editId) { const { error } = await supabaseClient.from('logistics_all').update(rowData).eq('id', editId); if (error) throw error; showToast("Activity Updated!"); } else { rowData["Year"] = new Date(date).getFullYear(); const { error } = await supabaseClient.from('logistics_all').insert([rowData]); if (error) throw error; showToast("Activity Added!"); } cancelEdit(); await fetchAllData(); } catch (err) { console.error(err); alert("Error saving: " + err.message); } }
+  async function toggleZain(id, isChecked) { const row = allLogistics.find(r => r.id === id); if(row) row[COLS_LOGISTICS.is_zain] = isChecked; const { error } = await supabaseClient.from('logistics_all').update({ [COLS_LOGISTICS.is_zain]: isChecked }).eq('id', id); if(error) { alert("Error saving: " + error.message); fetchAllData(); } else { showToast("Status updated!"); } }
   async function deleteActivity(id) { if(!confirm("Are you sure?")) return; try { const { error } = await supabaseClient.from('logistics_all').delete().eq('id', id); if(error) throw error; await fetchAllData(); } catch(err) { alert("Error deleting: " + err.message); } }
-  function renderActivityTable() {
-    const tbody = document.getElementById("tableBody"); tbody.innerHTML = "";
-    [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date])).forEach(row => {
-      const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : "";
-      tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td><td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="startEdit(${row.id})"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr);
-    });
-  }
-
-  // UTILS
-  function setDelta(id, curr, prev) {
-      const el = document.getElementById(id); if(!prev || prev === 0) { el.textContent = "—"; el.className = "kpi-delta delta-neutral"; return; }
-      const d = ((curr - prev) / prev) * 100; const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral";
-      el.textContent = `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}% vs Prev`; el.className = `kpi-delta ${cl}`;
-  }
-  function syncCurrency(source) { const val = document.getElementById(source === 'nav' ? 'currencySelectorNav' : 'currencySelectorCard').value; document.getElementById('currencySelectorNav').value = val; document.getElementById('currencySelectorCard').value = val; applyFilters(); }
+  function renderActivityTable() { const tbody = document.getElementById("tableBody"); tbody.innerHTML = ""; [...currentLogistics].sort((a,b) => new Date(b[COLS_LOGISTICS.start_date]) - new Date(a[COLS_LOGISTICS.start_date])).forEach(row => { const tr = document.createElement("tr"); let desc = row[COLS_LOGISTICS.description] || ""; const isChecked = row[COLS_LOGISTICS.is_zain] === true ? "checked" : ""; tr.innerHTML = `<td style="text-align:center;"><input type="checkbox" class="table-checkbox" ${isChecked} onclick="toggleZain(${row.id}, this.checked)"></td><td>${row[COLS_LOGISTICS.start_date]}</td><td><strong>${row[COLS_LOGISTICS.name]}</strong></td><td>${row[COLS_LOGISTICS.city]}</td><td>${Number(row[COLS_LOGISTICS.audience]).toLocaleString()}</td><td class="desc-cell">${desc}</td><td style="text-align:center;"><button class="btn-icon edit" onclick="startEdit(${row.id})"><span class="material-icons">edit</span></button><button class="btn-icon del" onclick="deleteActivity(${row.id})"><span class="material-icons">delete</span></button></td>`; tbody.appendChild(tr); }); }
+  function setDelta(id, curr, prev) { const el = document.getElementById(id); if(!prev || prev === 0) { el.textContent = "—"; el.className = "kpi-delta delta-neutral"; return; } const d = ((curr - prev) / prev) * 100; const cl = d > 0 ? "delta-up" : d < 0 ? "delta-down" : "delta-neutral"; el.textContent = `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)}% vs Prev`; el.className = `kpi-delta ${cl}`; }
   function formatMoney(amount, currency) { if (!amount) amount = 0; if (!currency) currency = "IQD"; if (currency === "IQD") return amount.toLocaleString() + " د.ع"; else { const val = amount / IQD_RATE; return "$" + val.toLocaleString(undefined, {maximumFractionDigits: 0}); } }
   function handleYearChange() { fetchAllData(); }
   function openLogin() { document.getElementById("loginModal").style.display = "flex"; document.getElementById("adminPassInput").value = ""; document.getElementById("adminPassInput").focus(); }
