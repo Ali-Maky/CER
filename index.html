@@ -251,13 +251,13 @@
 
       <div class="grid grid-3" style="margin-bottom: 20px;">
         <div class="card">
-            <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual</span></div></div>
+            <div class="card-header-row"><div class="card-label">Total Activities</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Actual Allocated Budget</span></div></div>
             <div id="kpiActivities" class="kpi-value">...</div>
             <div id="kpiActivitiesDelta" class="kpi-delta delta-neutral"></div>
             <div style="font-size:12px; color:#d946ef; margin-top:4px;"><span id="kpiZainRate">0%</span> Zain Led</div>
         </div>
         <div class="card"><div class="card-header-row"><div class="card-label">Participants</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>vs Prev</span></div></div><div id="kpiAudience" class="kpi-value">...</div><div id="kpiAudienceDelta" class="kpi-delta delta-neutral"></div></div>
-        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Footprint</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
+        <div class="card"><div class="card-header-row"><div class="card-label">Cities Covered</div><div class="badge-soft"><span class="badge-soft-dot"></span><span>Cities Covered</span></div></div><div id="kpiCities" class="kpi-value">...</div><div id="kpiCitiesDelta" class="kpi-delta delta-neutral"></div></div>
       </div>
 
       <div class="grid grid-4" style="margin-bottom: 20px;">
@@ -279,7 +279,7 @@
                 <div><div class="budget-sub-label">Planned Budget</div><div id="kpiBudgetPlanned" class="budget-sub-value">...</div></div>
             </div>
             <div class="budget-progress-bg"><div id="budgetProgressBar" class="budget-progress-fill"></div></div>
-            <div class="budget-progress-text"><span id="budgetProgressText">0% of Actual</span><span id="budgetPlanComparison">...</span></div>
+            <div class="budget-progress-text"><span id="budgetProgressText">0% Total Spent from Actual Approved</span><span id="budgetPlanComparison">...</span></div>
         </div>
 
         <div id="cardJobs" class="card" style="grid-column: span 2;">
@@ -321,7 +321,7 @@
             <div class="chart-wrapper"><canvas id="activitiesChart"></canvas></div>
         </div>
         <div class="card">
-            <div class="card-header-row"><div class="chart-title">SIM Distribution</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
+            <div class="card-header-row"><div class="chart-title">SIM Shareholders</div><select id="simYearFilter" onchange="updateSimChart()" class="card-filter"><option value="all">All Years</option></select></div>
             <div class="donut-card-body">
                 <div class="donut-kpi-section"><div id="kpiSimShare" class="donut-big-number">0%</div><div class="donut-label">Zain Share</div></div>
                 <div class="donut-chart-container"><canvas id="simChart"></canvas></div><div id="simLegend" class="donut-legend"></div>
@@ -621,13 +621,13 @@
     
     let pct = actual > 0 ? Math.min((spentVal / actual) * 100, 100) : 0; 
     document.getElementById("budgetProgressBar").style.width = pct + "%"; 
-    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% of Actual";
+    document.getElementById("budgetProgressText").textContent = pct.toFixed(1) + "% Total Spent from Actual Approved";
     
     if(planned > 0) { 
         const diff = ((actual - planned) / planned) * 100; 
         const sign = diff > 0 ? "+" : ""; 
         const color = diff > 0 ? "#f97373" : "#4ade80"; 
-        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% vs Plan`; 
+        document.getElementById("budgetPlanComparison").textContent = `${sign}${diff.toFixed(1)}% Actual Approved vs Planned`; 
         document.getElementById("budgetPlanComparison").style.color = color; 
     } else { document.getElementById("budgetPlanComparison").textContent = ""; }
 
@@ -744,5 +744,6 @@
 </script>
 </body>
 </html>
+
 
 
